@@ -1,7 +1,6 @@
 from collections import OrderedDict
 import ops
 import tensorflow as tf
-
 import common
 
 
@@ -44,7 +43,7 @@ class ForwardModel(object):
         hidden3 = tf.nn.relu(tf.matmul(hidden2, self.weights["decoder1_weights"]) + self.weights["decoder1_biases"])
         next_state = tf.matmul(hidden3, self.weights["decoder2_weights"]) + self.weights["decoder2_biases"]
 
-        gru_state = tf.cast(gru_state, tf.float32)
+        gru_state = tf.cast(gru_state, tf.float64)
         return next_state, gru_state
 
     def backward(self, loss):

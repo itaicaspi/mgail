@@ -33,7 +33,6 @@ class Environment(object):
                                                  Tout=[tf.float32, tf.float32, tf.bool],
                                                  name='env_step_func')
 
-            # DEBUG: flatten state. not sure if correctly
             state = tf.reshape(state, shape=(self.state_size,))
             done.set_shape(())
         else:
@@ -84,7 +83,6 @@ class Environment(object):
         self.save_agent_er = False
         self.save_agent_at_itr = 50000
         self.good_reward = 5000
-        self.al_loss = 'CE'
         self.use_temporal_regularization = False
 
         # Main parameters to play with:
@@ -96,9 +94,9 @@ class Environment(object):
         self.collect_experience_interval = 15
         self.n_steps_train = 10
         self.discr_policy_itrvl = 100
-        self.K_T = 1
-        self.K_D = 1
-        self.K_P = 1
+        self.forward_model_training_iterations = 1
+        self.discriminator_training_iterations = 1
+        self.policy_training_iterations = 1
         self.gamma = 0.99
         self.batch_size = 70
         self.policy_al_w = 1e-2
@@ -108,6 +106,9 @@ class Environment(object):
         self.temp = 1.
         self.cost_sensitive_weight = 0.8
         self.biased_noise = 0
+        self.w_std = 0.15
+        self.noise_intensity = 6.
+        self.do_keep_prob = 0.75
 
         # Hidden layers size
         self.fm_size = 100
@@ -119,8 +120,5 @@ class Environment(object):
         self.d_lr = 0.001
         self.p_lr = 0.0001
 
-        self.w_std = 0.15
 
-        self.noise_intensity = 6.
-        self.do_keep_prob = 0.75
 

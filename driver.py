@@ -38,12 +38,9 @@ class Driver(object):
         np.set_printoptions(precision=2)
         np.set_printoptions(linewidth=220)
 
-    def module_to_index(self, module):
-        v = {'transition': 0, 'discriminator': 1, 'policy': 2}
-        return v[module]
-
     def update_stats(self, module, attr, value):
-        module_ind = self.module_to_index(module)
+        v = {'forward_model': 0, 'discriminator': 1, 'policy': 2}
+        module_ind = v[module]
         if attr == 'loss':
             self.loss[module_ind] = self.run_avg * self.loss[module_ind] + (1-self.run_avg) * np.asarray(value)
         elif attr == 'grad':
@@ -55,7 +52,7 @@ class Driver(object):
 
     def train_forward_model(self):
         alg = self.algorithm
-        for k_t in range(self.env.K_T):
+        for k_t in range(self.env.forward_model_training_iterations):
             states_, actions, _, states = self.algorithm.er_agent.sample()[:4]
             states_ = np.squeeze(states_, axis=1)
             states = np.squeeze(states, axis=1)
@@ -63,13 +60,13 @@ class Driver(object):
                        alg.forward_model.mean_abs_grad, alg.forward_model.mean_abs_w]
             feed_dict = {alg.states_: states_, alg.states: states, alg.actions: actions, alg.do_keep_prob: self.env.do_keep_prob}
             run_vals = self.sess.run(fetches, feed_dict)
-            self.update_stats('transition', 'loss', run_vals[1])
-            self.update_stats('transition', 'grad', run_vals[2])
-            self.update_stats('transition', 'weights', run_vals[3])
+            self.update_stats('forward_model', 'loss', run_vals[1])
+            self.update_stats('forward_model', 'grad', run_vals[2])
+            self.update_stats('forward_model', 'weights', run_vals[3])
 
     def train_discriminator(self):
         alg = self.algorithm
-        for k_d in range(self.env.K_D):
+        for k_d in range(self.env.discriminator_training_iterations):
             state_a_, action_a = self.algorithm.er_agent.sample()[:2]
             state_a_ = np.squeeze(state_a_, axis=1)
 
@@ -94,7 +91,7 @@ class Driver(object):
 
     def train_policy(self, mode):
         alg = self.algorithm
-        for k_p in range(self.env.K_P):
+        for k_p in range(self.env.policy_training_iterations):
 
             # reset the policy gradient
             self.sess.run([alg.policy.reset_grad_op], {})
@@ -117,7 +114,8 @@ class Driver(object):
                 self.update_stats('policy', 'weights', run_vals[1])
 
                 # copy weights: w_policy_ <- w_policy
-                # self.sess.run([alg.policy_.copy_weights_op], {})
+                if self.env.use_temporal_regularization:
+                    self.sess.run([alg.policy_.copy_weights_op], {})
 
             else:  # Adversarial Learning
                 if self.env.get_status():
@@ -145,8 +143,8 @@ class Driver(object):
                 self.update_stats('policy', 'weights', run_vals[1])
 
                 # Plain Adversarial Learning
-                # states_ = self.algorithm.er_agent.sample()[0]
-                # states_ = np.squeeze(states_, axis=1)
+                states_ = self.algorithm.er_agent.sample()[0]
+                states_ = np.squeeze(states_, axis=1)
 
                 #fetches = [alg.policy.accum_grads_alr, alg.policy.loss_alr]
                 #feed_dict = {alg.states: np.array(states_), alg.do_keep_prob: self.env.do_keep_prob}
@@ -161,62 +159,18 @@ class Driver(object):
                 #self.update_stats('policy', 'grad', run_vals[0])
                 #self.update_stats('policy', 'weights', run_vals[1])
 
-                # # Temporal Regularization
-                # self.sess.run([alg.policy.accum_grads_tr], {alg.states: states_, alg.do_keep_prob: 1.})
-                # self.sess.run([alg.policy.apply_grads_tr], {})
-                #
-                # # copy weights: w_policy_ <- w_policy
-                # self.sess.run([alg.policy_.copy_weights_op], {})
+                # Temporal Regularization
+                if self.env.use_temporal_regularization:
+                    self.sess.run([alg.policy.accum_grads_tr], {alg.states: states_, alg.do_keep_prob: 1.})
+                    self.sess.run([alg.policy.apply_grads_tr], {})
 
-    def create_agent_batch(self):
-        states_ = []
-        actions = []
-        n = 0
-        while n < self.env.batch_size:
-            states_n_actions = self.play_agent()
-            states_ += states_n_actions[0]
-            actions += states_n_actions[1]
-            n += len(states_n_actions[0])
-
-        p = np.random.choice(n, self.env.batch_size)
-        self.batch = [np.asarray(states_)[p], np.asarray(actions)[p]]
-
-    def play_agent(self, n_steps=2, start_at_zero=False):
-
-        if start_at_zero:
-            obs_ = self.env.reset()
-        else:
-            qposs, qvels = self.algorithm.er_expert.sample()[5:]
-            obs_ = self.env.reset(qpos=qposs[0], qvel=qvels[0])
-
-        states_ = []
-        actions = []
-
-        alg = self.algorithm
-
-        if n_steps is None:
-            n_steps = self.env.n_steps_test
-
-        t = 0
-        done = False
-        while not done:
-            a = self.sess.run(fetches=[alg.action_test], feed_dict={alg.states: np.reshape(obs_, [1, -1]),
-                                                                    alg.do_keep_prob: 1.,
-                                                                    alg.noise: False,
-                                                                    alg.noise_mean: self.episode_noise_shift,
-                                                                    alg.temp: self.env.temp})
-
-            obs, reward, done, info, qpos, qvel = self.env.step(a, mode='python')
-            states_.append(obs_)
-            actions.append(a[0])
-            obs_ = obs
-            done = done or t > n_steps
-            t += 1
-        return states_, actions
+                    # copy weights: w_policy_ <- w_policy
+                    self.sess.run([alg.policy_.copy_weights_op], {})
 
     def collect_experience(self, record=1, vis=0, n_steps=None, noise_flag=True, start_at_zero=True):
         alg = self.algorithm
 
+        # environment initialization point
         if start_at_zero:
             observation = self.env.reset()
         else:
@@ -245,13 +199,10 @@ class Driver(object):
                                                                     alg.noise_mean: self.episode_noise_shift,
                                                                     alg.temp: self.env.temp})
 
-            result = self.env.step(a, mode='python')
-            observation, reward, done, info, qpos, qvel = result
+            observation, reward, done, info, qpos, qvel = self.env.step(a, mode='python')
 
             done = done or t > n_steps
-
             t += 1
-
             R += reward
 
             self.a_mean = a[0].mean()
@@ -329,7 +280,7 @@ class Driver(object):
             if hasattr(self.env, 'log_fid'):
                 self.env.log_fid.write(buf)
         else:
-            buf = "processing iter: %d, loss(transition,discriminator,policy): %s, disc_acc: %f" % (self.itr, self.loss, self.disc_acc)
+            buf = "processing iter: %d, loss(forward_model,discriminator,policy): %s, disc_acc: %f" % (self.itr, self.loss, self.disc_acc)
         sys.stdout.write('\r' + buf)
 
     def save_model(self, dir_name=None):

@@ -152,12 +152,13 @@ class MGAIL(object):
             # add step cost
             total_cost += tf.multiply(tf.pow(self.gamma, t), cost)
 
-            # get next state
+            # get action
             if self.env.continuous_actions:
                 a_sim = common.denormalize(action, self.er_expert.actions_mean, self.er_expert.actions_std)
             else:
                 a_sim = tf.argmax(action, dimension=1)
 
+            # get next state
             state_env, _, env_term_sig, = self.env.step(a_sim, mode='tensorflow')[:3]
             state_e = common.normalize(state_env, self.er_expert.states_mean, self.er_expert.states_std)
             state_e = tf.stop_gradient(state_e)
@@ -182,20 +183,10 @@ class MGAIL(object):
 
     def al_loss(self, d):
         logit_agent, logit_expert = tf.split(axis=1, num_or_size_splits=2, value=d)
-        logit_gap = logit_agent - logit_expert
-        valid_cond = tf.stop_gradient(tf.to_float(logit_gap > 0))
-        valid_gaps = tf.multiply(logit_gap, valid_cond)
 
-        # L2
-        if self.env.al_loss == 'L2':
-            loss = tf.nn.l2_loss(tf.multiply(logit_gap, tf.to_float(logit_gap > 0)))
-        # L1
-        elif self.env.al_loss == 'L1':
-            loss = tf.reduce_mean(valid_gaps)
-        # Cross entropy
-        elif self.env.al_loss == 'CE':
-            labels = tf.concat([tf.zeros_like(logit_agent), tf.ones_like(logit_expert)], 1)
-            d_cross_entropy = tf.nn.softmax_cross_entropy_with_logits(logits=d, labels=labels)
-            loss = tf.reduce_mean(d_cross_entropy)
+        # Cross entropy loss
+        labels = tf.concat([tf.zeros_like(logit_agent), tf.ones_like(logit_expert)], 1)
+        d_cross_entropy = tf.nn.softmax_cross_entropy_with_logits(logits=d, labels=labels)
+        loss = tf.reduce_mean(d_cross_entropy)
 
         return loss*self.env.policy_al_w

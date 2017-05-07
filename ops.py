@@ -1,5 +1,4 @@
 import tensorflow as tf
-from collections import OrderedDict
 
 
 def dense(input, output_size, activation):
