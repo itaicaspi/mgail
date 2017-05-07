@@ -23,7 +23,7 @@ class Driver(object):
         self.loss = 999. * np.ones(3)
         self.abs_grad = 0 * np.ones(3)
         self.abs_w = 0 * np.ones(3)
-        self.reward = 0
+        self.reward_mean = 0
         self.reward_std = 0
         self.run_avg = 0.001
         self.discriminator_policy_switch = 0
@@ -70,11 +70,8 @@ class Driver(object):
     def train_discriminator(self):
         alg = self.algorithm
         for k_d in range(self.env.K_D):
-            if self.env.dad_gan:
-                state_a_, action_a = self.batch
-            else:
-                state_a_, action_a = self.algorithm.er_agent.sample()[:2]
-                state_a_ = np.squeeze(state_a_, axis=1)
+            state_a_, action_a = self.algorithm.er_agent.sample()[:2]
+            state_a_ = np.squeeze(state_a_, axis=1)
 
             state_e_, action_e = self.algorithm.er_expert.sample()[:2]
             state_e_ = np.squeeze(state_e_, axis=1)
@@ -148,11 +145,8 @@ class Driver(object):
                 self.update_stats('policy', 'weights', run_vals[1])
 
                 # Plain Adversarial Learning
-                #if self.env.dad_gan:
-                #    states_, _ = self.batch
-                #else:
-                #    states_ = self.algorithm.er_agent.sample()[0]
-                #    states_ = np.squeeze(states_, axis=1)
+                # states_ = self.algorithm.er_agent.sample()[0]
+                # states_ = np.squeeze(states_, axis=1)
 
                 #fetches = [alg.policy.accum_grads_alr, alg.policy.loss_alr]
                 #feed_dict = {alg.states: np.array(states_), alg.do_keep_prob: self.env.do_keep_prob}
@@ -226,7 +220,7 @@ class Driver(object):
         if start_at_zero:
             observation = self.env.reset()
         else:
-            qposs, qvels = self.algorithm.er_expert.sample()[5:]
+            qposs, qvels = alg.er_expert.sample()[5:]
             observation = self.env.reset(qpos=qposs[0], qvel=qvels[0])
 
         self.episode_noise_shift = self.env.biased_noise * np.random.normal(scale=alg.env.sigma)
@@ -269,29 +263,19 @@ class Driver(object):
                 else:
                     action = np.zeros((1, self.env.action_size))
                     action[0, a[0]] = 1
-                self.algorithm.er_agent.add(actions=action, rewards=[reward], next_states=[observation], terminals=[done], qposs=[qpos], qvels=[qvel])
+                alg.er_agent.add(actions=action, rewards=[reward], next_states=[observation], terminals=[done], qposs=[qpos], qvels=[qvel])
 
         self.avg_policy_time = t
 
         return R
 
-    def reset_module(self, module):
-
-        temp = set(tf.all_variables())
-
-        module.backward(module.loss)
-
-        self.sess.run(tf.initialize_variables(set(tf.all_variables()) - temp))
-
     def train_step(self):
-        # phase_0: Model identification:
-        # autoencoder: learning from expert data
+        # phase_0 - Model identification:
         # forward_model: learning from the expert data
         # discriminator: learning concurrently with policy
         # policy: learning in SL mode
 
-        # phase_1: Adversarial training
-        # autoencoder: learning from agent data
+        # phase_1 - Adversarial training
         # forward_model: learning from agent data
         # discriminator: learning in an interleaved mode with policy
         # policy: learning in adversarial mode
@@ -299,8 +283,7 @@ class Driver(object):
         # Train policy in SL
         if self.itr < self.env.model_identification_time:
             self.mode = 'SL'
-            if self.env.train_flags[2]:
-                self.train_policy(self.mode)
+            self.train_policy(self.mode)
 
         # Fill Experience Buffer
         elif self.itr == self.env.model_identification_time and self.env.pre_load_buffer:
@@ -311,35 +294,26 @@ class Driver(object):
 
         # Adversarial Learning
         else:
-            if self.env.train_flags[1]:
-                self.train_forward_model()
+            self.train_forward_model()
 
-            if self.env.train_flags[2]:
-                self.mode = 'Prep'
-                if self.itr < (self.env.model_identification_time + self.env.prep_time):
-                    if self.env.dad_gan:
-                        self.create_agent_batch()
+            self.mode = 'Prep'
+            if self.itr < (self.env.model_identification_time + self.env.prep_time):
+                self.train_discriminator()
+            else:
+                self.mode = 'AL'
+
+                if self.discriminator_policy_switch:
                     self.train_discriminator()
                 else:
-                    self.mode = 'AL'
-                    if self.env.dad_gan:
-                        self.create_agent_batch()
-                        self.train_discriminator()
-                        self.train_policy(self.mode)
-                        self.train_discriminator()
-                    else:
-                        if self.discriminator_policy_switch:
-                            self.train_discriminator()
-                        else:
-                            self.train_policy(self.mode)
-                            pass
+                    self.train_policy(self.mode)
+                    pass
 
-                        if self.itr % self.env.collect_experience_interval == 0:
-                            self.collect_experience(start_at_zero=False, n_steps=self.env.n_steps_train)
+                if self.itr % self.env.collect_experience_interval == 0:
+                    self.collect_experience(start_at_zero=False, n_steps=self.env.n_steps_train)
 
-                        # switch discriminator-policy
-                        if self.itr % self.env.discr_policy_itrvl == 0:
-                            self.discriminator_policy_switch = not self.discriminator_policy_switch
+                # switch discriminator-policy
+                if self.itr % self.env.discr_policy_itrvl == 0:
+                    self.discriminator_policy_switch = not self.discriminator_policy_switch
 
         # print progress
         if self.itr % 100 == 0:
@@ -351,7 +325,7 @@ class Driver(object):
                   'weights: %s, er_count: %d, R: %.1f, R_std: %.2f, a_mean: %.2f, a_std: %.2f\n' % \
                   (time.strftime("%H:%M:%S"), self.mode, self.itr, self.loss, self.disc_acc,
                    self.abs_grad[0], self.abs_grad[1], self.abs_grad[2], self.abs_w,
-                   self.algorithm.er_agent.count, self.reward, self.reward_std, self.a_mean, self.a_std)
+                   self.algorithm.er_agent.count, self.reward_mean, self.reward_std, self.a_mean, self.a_std)
             if hasattr(self.env, 'log_fid'):
                 self.env.log_fid.write(buf)
         else:

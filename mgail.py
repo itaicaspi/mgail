@@ -1,11 +1,13 @@
 import numpy as np
 import tensorflow as tf
 
+import os
 import common
 from ER import ER
 from forward_model import ForwardModel
 from discriminator import Discriminator
 from policy import Policy
+
 
 class MGAIL(object):
     def __init__(self, environment):
@@ -23,9 +25,11 @@ class MGAIL(object):
         self.noise_mean = tf.placeholder("float", shape=self.env.action_size)
         self.do_keep_prob = tf.placeholder("float", shape=(), name='do_keep_prob')
 
+        # Create MGAIL blocks
         self.forward_model = ForwardModel(state_size=self.env.state_size,
                                           action_size=self.env.action_size,
-                                          encoding_size=self.env.fm_encoding_size)
+                                          encoding_size=self.env.fm_size,
+                                          lr=self.env.fm_lr)
 
         self.discriminator = Discriminator(in_dim=self.env.state_size + self.env.action_size,
                                            out_dim=2,
@@ -43,15 +47,17 @@ class MGAIL(object):
                               n_accum_steps=self.env.policy_accum_steps,
                               weight_decay=self.env.weight_decay)
 
-        # self.policy_ = Policy(in_dim=self.env.state_size,
-        #                        out_dim=self.env.action_size,
-        #                        size=self.env.p_size,
-        #                        lr=self.env.p_lr,
-        #                        w_std=self.env.w_std,
-        #                        do_keep_prob=self.do_keep_prob,
-        #                        n_accum_steps=self.env.policy_accum_steps,
-        #                        weight_decay=self.env.weight_decay)
+        if self.env.use_temporal_regularization:
+            self.policy_ = Policy(in_dim=self.env.state_size,
+                                   out_dim=self.env.action_size,
+                                   size=self.env.p_size,
+                                   lr=self.env.p_lr,
+                                   w_std=self.env.w_std,
+                                   do_keep_prob=self.do_keep_prob,
+                                   n_accum_steps=self.env.policy_accum_steps,
+                                   weight_decay=self.env.weight_decay)
 
+        # Create experience buffers
         self.er_agent = ER(memory_size=self.env.er_agent_size,
                            state_dim=self.env.state_size,
                            action_dim=self.env.action_size,
@@ -61,7 +67,7 @@ class MGAIL(object):
                            batch_size=self.env.batch_size,
                            history_length=1)
 
-        self.er_expert = common.load_er(fname=self.env.run_dir + self.env.expert_data,
+        self.er_expert = common.load_er(fname=os.path.join(self.env.run_dir, self.env.expert_data),
                                         batch_size=self.env.batch_size,
                                         history_length=1,
                                         traj_length=2)
@@ -117,11 +123,12 @@ class MGAIL(object):
         self.policy.train(objective=policy_sl_loss, mode='sl')
 
         # 4.2 Temporal Regularization
-        # actions_a_ = self.policy_.forward(states)
-        # policy_tr_loss = self.env.policy_tr_w * self.env.policy_accum_steps * tf.nn.forward_model_loss(actions_a - actions_a_)
-        # self.policy.train(objective=policy_tr_loss, mode='tr')
-        # # op for copying weights from policy to policy_
-        # self.policy_.copy_weights(self.policy.weights, self.policy.biases)
+        if self.env.use_temporal_regularization:
+            actions_a_ = self.policy_.forward(states)
+            policy_tr_loss = self.env.policy_tr_w * self.env.policy_accum_steps * tf.nn.l2_loss(actions_a - actions_a_)
+            self.policy.train(objective=policy_tr_loss, mode='tr')
+            # op for copying weights from policy to policy_
+            self.policy_.copy_weights(self.policy.weights, self.policy.biases)
 
         # Plain adversarial learning
         d = self.discriminator.forward(states, actions_a)

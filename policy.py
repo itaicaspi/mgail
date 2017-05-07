@@ -31,11 +31,6 @@ class Policy(object):
         state: vector
         '''
 
-        import ops
-
-        # relu0, weights, biases = ops.dense(state, self.arch_params['n_hidden_0'], tf.nn.relu, self.solver_params['weights_stddev'])
-        # self.weights['w0'] = weights
-        # self.weights['b0'] = biases
         h0 = tf.nn.xw_plus_b(state, self.weights['w0'], self.biases['b0'], name='h0')
         relu0 = tf.nn.relu(h0)
 

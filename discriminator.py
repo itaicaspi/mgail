@@ -21,7 +21,7 @@ class Discriminator(object):
             'weights_stddev': 0.1,
         }
 
-        self._init_layers()
+        self.weights, self.biases = self.create_variables()
 
     def forward(self, state, action):
         '''
@@ -81,5 +81,3 @@ class Discriminator(object):
         ])
         return weights, biases
 
-    def _init_layers(self):
-        self.weights, self.biases = self.create_variables()

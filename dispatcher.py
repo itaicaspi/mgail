@@ -34,20 +34,21 @@ def dispatcher(env):
             for n in range(env.n_episodes_test):
                 R.append(driver.collect_experience(record=True, vis=env.vis_flag, noise_flag=False, n_steps=1000))
 
-            driver.reward = sum(R)/len(R)
+            # update stats
+            driver.reward_mean = sum(R) / len(R)
             driver.reward_std = np.std(R)
-
-            if driver.env.save_agent_er and driver.itr > driver.env.save_agent_at_itr:
-                common.save_er(directory=driver.env.run_dir, module=driver.algorithm.er_agent, exit_=True)
-
-            if driver.reward > driver.best_reward:
-                driver.best_reward = driver.reward
+            if driver.reward_mean > driver.best_reward:
+                driver.best_reward = driver.reward_mean
 
             # print info line
             driver.print_info_line('full')
 
+            # save experience buffer
+            if driver.env.save_agent_er and driver.itr > driver.env.save_agent_at_itr:
+                common.save_er(directory=driver.env.run_dir, module=driver.algorithm.er_agent, exit_=True)
+
             # save snapshot
-            if env.train_mode and (env.save_models or driver.reward > env.good_reward):
+            if env.train_mode and (env.save_models or driver.reward_mean > env.good_reward):
                 driver.save_model(dir_name=env.config_dir)
 
         driver.itr += 1
