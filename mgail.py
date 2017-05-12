@@ -47,16 +47,6 @@ class MGAIL(object):
                               n_accum_steps=self.env.policy_accum_steps,
                               weight_decay=self.env.weight_decay)
 
-        if self.env.use_temporal_regularization:
-            self.policy_ = Policy(in_dim=self.env.state_size,
-                                   out_dim=self.env.action_size,
-                                   size=self.env.p_size,
-                                   lr=self.env.p_lr,
-                                   w_std=self.env.w_std,
-                                   do_keep_prob=self.do_keep_prob,
-                                   n_accum_steps=self.env.policy_accum_steps,
-                                   weight_decay=self.env.weight_decay)
-
         # Create experience buffers
         self.er_agent = ER(memory_size=self.env.er_agent_size,
                            state_dim=self.env.state_size,
@@ -116,24 +106,6 @@ class MGAIL(object):
             a = common.gumbel_softmax(logits=mu, temperature=self.temp)
             self.action_test = tf.argmax(a, dimension=1)
 
-        # 4. Policy
-        # 4.1 SL
-        actions_a = self.policy.forward(states)
-        policy_sl_loss = tf.nn.l2_loss(actions_a - actions)  # action == expert action
-        self.policy.train(objective=policy_sl_loss, mode='sl')
-
-        # 4.2 Temporal Regularization
-        if self.env.use_temporal_regularization:
-            actions_a_ = self.policy_.forward(states)
-            policy_tr_loss = self.env.policy_tr_w * self.env.policy_accum_steps * tf.nn.l2_loss(actions_a - actions_a_)
-            self.policy.train(objective=policy_tr_loss, mode='tr')
-            # op for copying weights from policy to policy_
-            self.policy_.copy_weights(self.policy.weights, self.policy.biases)
-
-        # Plain adversarial learning
-        d = self.discriminator.forward(states, actions_a)
-        policy_alr_loss = self.al_loss(d)
-        self.policy.train(objective=policy_alr_loss, mode='alr')
 
         # 4.3 AL
         def policy_loop(state_, t, total_cost, total_trans_err, _):

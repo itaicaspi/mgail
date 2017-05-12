@@ -32,7 +32,7 @@ class Driver(object):
         self.er_count = 0
         self.itr = 0
         self.best_reward = 0
-        self.mode = 'SL'
+        self.mode = 'Prep'
         self.a_mean = 0.
         self.a_std = 0.
         np.set_printoptions(precision=2)
@@ -52,120 +52,71 @@ class Driver(object):
 
     def train_forward_model(self):
         alg = self.algorithm
-        for k_t in range(self.env.forward_model_training_iterations):
-            states_, actions, _, states = self.algorithm.er_agent.sample()[:4]
-            states_ = np.squeeze(states_, axis=1)
-            states = np.squeeze(states, axis=1)
-            fetches = [alg.forward_model.minimize, alg.forward_model.loss,
-                       alg.forward_model.mean_abs_grad, alg.forward_model.mean_abs_w]
-            feed_dict = {alg.states_: states_, alg.states: states, alg.actions: actions, alg.do_keep_prob: self.env.do_keep_prob}
-            run_vals = self.sess.run(fetches, feed_dict)
-            self.update_stats('forward_model', 'loss', run_vals[1])
-            self.update_stats('forward_model', 'grad', run_vals[2])
-            self.update_stats('forward_model', 'weights', run_vals[3])
+        states_, actions, _, states = self.algorithm.er_agent.sample()[:4]
+        states_ = np.squeeze(states_, axis=1)
+        states = np.squeeze(states, axis=1)
+        fetches = [alg.forward_model.minimize, alg.forward_model.loss,
+                   alg.forward_model.mean_abs_grad, alg.forward_model.mean_abs_w]
+        feed_dict = {alg.states_: states_, alg.states: states, alg.actions: actions, alg.do_keep_prob: self.env.do_keep_prob}
+        run_vals = self.sess.run(fetches, feed_dict)
+        self.update_stats('forward_model', 'loss', run_vals[1])
+        self.update_stats('forward_model', 'grad', run_vals[2])
+        self.update_stats('forward_model', 'weights', run_vals[3])
 
     def train_discriminator(self):
         alg = self.algorithm
-        for k_d in range(self.env.discriminator_training_iterations):
-            state_a_, action_a = self.algorithm.er_agent.sample()[:2]
-            state_a_ = np.squeeze(state_a_, axis=1)
+        state_a_, action_a = self.algorithm.er_agent.sample()[:2]
+        state_a_ = np.squeeze(state_a_, axis=1)
 
-            state_e_, action_e = self.algorithm.er_expert.sample()[:2]
-            state_e_ = np.squeeze(state_e_, axis=1)
-            states = np.concatenate([state_a_, state_e_])
-            actions = np.concatenate([action_a, action_e])
+        state_e_, action_e = self.algorithm.er_expert.sample()[:2]
+        state_e_ = np.squeeze(state_e_, axis=1)
+        states = np.concatenate([state_a_, state_e_])
+        actions = np.concatenate([action_a, action_e])
 
-            # labels (policy/expert) : 0/1, and in 1-hot form: policy-[1,0], expert-[0,1]
-            labels_a = np.zeros(shape=(state_a_.shape[0],))
-            labels_e = np.ones(shape=(state_e_.shape[0],))
-            labels = np.expand_dims(np.concatenate([labels_a, labels_e]), axis=1)
-            fetches = [alg.discriminator.minimize, alg.discriminator.loss, alg.discriminator.mean_abs_grad,
-                       alg.discriminator.mean_abs_w, alg.discriminator.acc]
-            feed_dict = {alg.states: states, alg.actions: actions,
-                         alg.label: labels, alg.do_keep_prob: self.env.do_keep_prob}
-            run_vals = self.sess.run(fetches, feed_dict)
-            self.update_stats('discriminator', 'loss', run_vals[1])
-            self.update_stats('discriminator', 'grad', run_vals[2])
-            self.update_stats('discriminator', 'weights', run_vals[3])
-            self.update_stats('discriminator', 'accuracy', run_vals[4])
+        # labels (policy/expert) : 0/1, and in 1-hot form: policy-[1,0], expert-[0,1]
+        labels_a = np.zeros(shape=(state_a_.shape[0],))
+        labels_e = np.ones(shape=(state_e_.shape[0],))
+        labels = np.expand_dims(np.concatenate([labels_a, labels_e]), axis=1)
+        fetches = [alg.discriminator.minimize, alg.discriminator.loss, alg.discriminator.mean_abs_grad,
+                   alg.discriminator.mean_abs_w, alg.discriminator.acc]
+        feed_dict = {alg.states: states, alg.actions: actions,
+                     alg.label: labels, alg.do_keep_prob: self.env.do_keep_prob}
+        run_vals = self.sess.run(fetches, feed_dict)
+        self.update_stats('discriminator', 'loss', run_vals[1])
+        self.update_stats('discriminator', 'grad', run_vals[2])
+        self.update_stats('discriminator', 'weights', run_vals[3])
+        self.update_stats('discriminator', 'accuracy', run_vals[4])
 
     def train_policy(self, mode):
         alg = self.algorithm
-        for k_p in range(self.env.policy_training_iterations):
 
-            # reset the policy gradient
-            self.sess.run([alg.policy.reset_grad_op], {})
+        # reset the policy gradient
+        self.sess.run([alg.policy.reset_grad_op], {})
 
-            if mode == 'SL':
-                state_e_, action_e = self.algorithm.er_expert.sample()[:2]
-                state_e_ = np.squeeze(state_e_, axis=1)
-                # accumulate the SL gradient
-                fetches = [alg.policy.accum_grads_sl, alg.policy.loss_sl]
-                feed_dict = {alg.states: state_e_, alg.actions: action_e, alg.do_keep_prob: self.env.do_keep_prob}
-                run_vals = self.sess.run(fetches, feed_dict)
-                self.update_stats('policy', 'loss', run_vals[1])
+        # Adversarial Learning
+        if self.env.get_status():
+            state = self.env.reset()
+            self.episode_noise_shift = self.env.biased_noise*np.random.normal(scale=alg.env.sigma)
+        else:
+            state = self.env.get_state()
 
-                # apply SL gradient
-                self.sess.run([alg.policy.apply_grads_sl], {})
+        # Accumulate the (noisy) adversarial gradient
+        for i in range(self.env.policy_accum_steps):
+            # accumulate AL gradient
+            fetches = [alg.policy.accum_grads_al, alg.policy.loss_al]
+            feed_dict = {alg.states: np.array([state]), alg.gamma: self.env.gamma,
+                         alg.do_keep_prob: self.env.do_keep_prob, alg.noise: 1., alg.temp: self.env.temp,
+                         alg.noise_mean: self.episode_noise_shift}
+            run_vals = self.sess.run(fetches, feed_dict)
+            self.update_stats('policy', 'loss', run_vals[1])
 
-                # output gradient / weights statistics
-                run_vals = self.sess.run([alg.policy.mean_abs_grad_sl, alg.policy.mean_abs_w_sl], {})
-                self.update_stats('policy', 'grad', run_vals[0])
-                self.update_stats('policy', 'weights', run_vals[1])
+        # apply AL gradient
+        self.sess.run([alg.policy.apply_grads_al], {})
 
-                # copy weights: w_policy_ <- w_policy
-                if self.env.use_temporal_regularization:
-                    self.sess.run([alg.policy_.copy_weights_op], {})
-
-            else:  # Adversarial Learning
-                if self.env.get_status():
-                    state = self.env.reset()
-                    self.episode_noise_shift = self.env.biased_noise*np.random.normal(scale=alg.env.sigma)
-                else:
-                    state = self.env.get_state()
-
-                # Accumulate the (noisy) adversarial gradient
-                for i in range(self.env.policy_accum_steps):
-                    # accumulate AL gradient
-                    fetches = [alg.policy.accum_grads_al, alg.policy.loss_al]
-                    feed_dict = {alg.states: np.array([state]), alg.gamma: self.env.gamma,
-                                 alg.do_keep_prob: self.env.do_keep_prob, alg.noise: 1., alg.temp: self.env.temp,
-                                 alg.noise_mean: self.episode_noise_shift}
-                    run_vals = self.sess.run(fetches, feed_dict)
-                    self.update_stats('policy', 'loss', run_vals[1])
-
-                # apply AL gradient
-                self.sess.run([alg.policy.apply_grads_al], {})
-
-                # output gradient / weights statistics
-                run_vals = self.sess.run([alg.policy.mean_abs_grad_al, alg.policy.mean_abs_w_al], {})
-                self.update_stats('policy', 'grad', run_vals[0])
-                self.update_stats('policy', 'weights', run_vals[1])
-
-                # Plain Adversarial Learning
-                states_ = self.algorithm.er_agent.sample()[0]
-                states_ = np.squeeze(states_, axis=1)
-
-                #fetches = [alg.policy.accum_grads_alr, alg.policy.loss_alr]
-                #feed_dict = {alg.states: np.array(states_), alg.do_keep_prob: self.env.do_keep_prob}
-                #run_vals = self.sess.run(fetches, feed_dict)
-                #self.update_stats('policy', 'loss', run_vals[1])
-
-                # apply ALR gradient
-                #self.sess.run([alg.policy.apply_grads_alr], {})
-
-                # output gradient / weights statistics
-                #run_vals = self.sess.run([alg.policy.mean_abs_grad_alr, alg.policy.mean_abs_w_alr], {})
-                #self.update_stats('policy', 'grad', run_vals[0])
-                #self.update_stats('policy', 'weights', run_vals[1])
-
-                # Temporal Regularization
-                if self.env.use_temporal_regularization:
-                    self.sess.run([alg.policy.accum_grads_tr], {alg.states: states_, alg.do_keep_prob: 1.})
-                    self.sess.run([alg.policy.apply_grads_tr], {})
-
-                    # copy weights: w_policy_ <- w_policy
-                    self.sess.run([alg.policy_.copy_weights_op], {})
+        # output gradient / weights statistics
+        run_vals = self.sess.run([alg.policy.mean_abs_grad_al, alg.policy.mean_abs_w_al], {})
+        self.update_stats('policy', 'grad', run_vals[0])
+        self.update_stats('policy', 'weights', run_vals[1])
 
     def collect_experience(self, record=1, vis=0, n_steps=None, noise_flag=True, start_at_zero=True):
         alg = self.algorithm
@@ -231,13 +182,8 @@ class Driver(object):
         # discriminator: learning in an interleaved mode with policy
         # policy: learning in adversarial mode
 
-        # Train policy in SL
-        if self.itr < self.env.model_identification_time:
-            self.mode = 'SL'
-            self.train_policy(self.mode)
-
         # Fill Experience Buffer
-        elif self.itr == self.env.model_identification_time and self.env.pre_load_buffer:
+        if self.itr == 0 and self.env.pre_load_buffer:
             while self.algorithm.er_agent.current == self.algorithm.er_agent.count:
                 self.collect_experience()
                 buf = 'Collecting examples...%d/%d' % (self.algorithm.er_agent.current, self.algorithm.er_agent.states.shape[0])
@@ -248,7 +194,7 @@ class Driver(object):
             self.train_forward_model()
 
             self.mode = 'Prep'
-            if self.itr < (self.env.model_identification_time + self.env.prep_time):
+            if self.itr < self.env.prep_time:
                 self.train_discriminator()
             else:
                 self.mode = 'AL'

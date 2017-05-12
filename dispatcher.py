@@ -37,8 +37,6 @@ def dispatcher(env):
             # update stats
             driver.reward_mean = sum(R) / len(R)
             driver.reward_std = np.std(R)
-            if driver.reward_mean > driver.best_reward:
-                driver.best_reward = driver.reward_mean
 
             # print info line
             driver.print_info_line('full')
