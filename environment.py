@@ -72,7 +72,7 @@ class Environment(object):
         self.expert_data = 'expert_trajectories/hopper_er.bin'
         self.pre_load_buffer = True
         self.n_train_iters = 1000000
-        self.n_episodes_test = 5
+        self.n_episodes_test = 1
         self.test_interval = 1000
         self.n_steps_test = 1000
         self.vis_flag = True

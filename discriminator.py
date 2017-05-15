@@ -1,12 +1,9 @@
 from collections import OrderedDict
 import tensorflow as tf
-import common
 
 
 class Discriminator(object):
-
     def __init__(self, in_dim, out_dim, size, lr, do_keep_prob, weight_decay):
-
         self.arch_params = {
             'in_dim': in_dim,
             'out_dim': out_dim,
@@ -44,7 +41,6 @@ class Discriminator(object):
         return d
 
     def backward(self, loss):
-
         # create an optimizer
         opt = tf.train.AdamOptimizer(learning_rate=self.solver_params['lr'])
 
@@ -55,29 +51,32 @@ class Discriminator(object):
         # compute the gradients for a list of variables
         grads_and_vars = opt.compute_gradients(loss=loss, var_list=self.weights.values() + self.biases.values())
 
-        mean_abs_grad, mean_abs_w = common.compute_mean_abs_norm(grads_and_vars)
-
         # apply the gradient
         apply_grads = opt.apply_gradients(grads_and_vars)
 
-        return apply_grads, mean_abs_grad, mean_abs_w
+        return apply_grads
 
     def train(self, objective):
         self.loss = objective
-        self.minimize, self.mean_abs_grad, self.mean_abs_w = self.backward(self.loss)
+        self.minimize = self.backward(self.loss)
         self.loss_summary = tf.summary.scalar('loss_d', objective)
 
     def create_variables(self):
         weights = OrderedDict([
-            ('0', tf.Variable(tf.random_normal([self.arch_params['in_dim']    , self.arch_params['n_hidden_0']], stddev=self.solver_params['weights_stddev']))),
-            ('1', tf.Variable(tf.random_normal([self.arch_params['n_hidden_0'], self.arch_params['n_hidden_1']], stddev=self.solver_params['weights_stddev']))),
-            ('c', tf.Variable(tf.random_normal([self.arch_params['n_hidden_1'], self.arch_params['out_dim']]   , stddev=self.solver_params['weights_stddev']))),
+            ('0', tf.Variable(tf.random_normal([self.arch_params['in_dim'], self.arch_params['n_hidden_0']],
+                                               stddev=self.solver_params['weights_stddev']))),
+            ('1', tf.Variable(tf.random_normal([self.arch_params['n_hidden_0'], self.arch_params['n_hidden_1']],
+                                               stddev=self.solver_params['weights_stddev']))),
+            ('c', tf.Variable(tf.random_normal([self.arch_params['n_hidden_1'], self.arch_params['out_dim']],
+                                               stddev=self.solver_params['weights_stddev']))),
         ])
 
         biases = OrderedDict([
-            ('0', tf.Variable(tf.random_normal([self.arch_params['n_hidden_0']], stddev=self.solver_params['weights_stddev']))),
-            ('1', tf.Variable(tf.random_normal([self.arch_params['n_hidden_1']], stddev=self.solver_params['weights_stddev']))),
-            ('c', tf.Variable(tf.random_normal([self.arch_params['out_dim']], stddev=self.solver_params['weights_stddev'])))
+            ('0', tf.Variable(
+                tf.random_normal([self.arch_params['n_hidden_0']], stddev=self.solver_params['weights_stddev']))),
+            ('1', tf.Variable(
+                tf.random_normal([self.arch_params['n_hidden_1']], stddev=self.solver_params['weights_stddev']))),
+            ('c',
+             tf.Variable(tf.random_normal([self.arch_params['out_dim']], stddev=self.solver_params['weights_stddev'])))
         ])
         return weights, biases
-

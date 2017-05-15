@@ -62,8 +62,7 @@ class MGAIL(object):
                                         history_length=1,
                                         traj_length=2)
 
-        self.env.sigma = self.er_expert.actions_std/self.env.noise_intensity
-
+        self.env.sigma = self.er_expert.actions_std / self.env.noise_intensity
 
         # Normalize the inputs
         states_ = common.normalize(self.states_, self.er_expert.states_mean, self.er_expert.states_std)

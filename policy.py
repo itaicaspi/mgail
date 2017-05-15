@@ -2,11 +2,8 @@ from collections import OrderedDict
 
 import tensorflow as tf
 
-import common
-
 
 class Policy(object):
-
     def __init__(self, in_dim, out_dim, size, lr, w_std, do_keep_prob, n_accum_steps, weight_decay):
 
         self.arch_params = {
@@ -71,32 +68,34 @@ class Policy(object):
         for g, v in zip(self.accum_grads.values(), variables):
             grads_and_vars.append([tf.div(g, self.solver_params['n_accum_steps']), v])
 
-        mean_abs_grad, mean_abs_w = common.compute_mean_abs_norm(grads_and_vars)
-
         # apply the gradient
         apply_grads = opt.apply_gradients(grads_and_vars)
 
-        return apply_grads, mean_abs_grad, mean_abs_w, accum_grads_op
+        return apply_grads, accum_grads_op
 
     def train(self, objective, mode):
         setattr(self, 'loss_' + mode, objective)
         backward = self.backward(getattr(self, 'loss_' + mode))
         setattr(self, 'apply_grads_' + mode, backward[0])
-        setattr(self, 'mean_abs_grad_' + mode, backward[1])
-        setattr(self, 'mean_abs_w_' + mode, backward[2])
-        setattr(self, 'accum_grads_' + mode, backward[3])
+        setattr(self, 'accum_grads_' + mode, backward[1])
 
     def create_variables(self):
         weights = OrderedDict([
-            ('w0', tf.Variable(tf.random_normal([self.arch_params['in_dim']    , self.arch_params['n_hidden_0']], stddev=self.solver_params['weights_stddev']))),
-            ('w1', tf.Variable(tf.random_normal([self.arch_params['n_hidden_0'], self.arch_params['n_hidden_1']], stddev=self.solver_params['weights_stddev']))),
-            ('wc', tf.Variable(tf.random_normal([self.arch_params['n_hidden_1'], self.arch_params['out_dim']]   , stddev=self.solver_params['weights_stddev']))),
+            ('w0', tf.Variable(tf.random_normal([self.arch_params['in_dim'], self.arch_params['n_hidden_0']],
+                                                stddev=self.solver_params['weights_stddev']))),
+            ('w1', tf.Variable(tf.random_normal([self.arch_params['n_hidden_0'], self.arch_params['n_hidden_1']],
+                                                stddev=self.solver_params['weights_stddev']))),
+            ('wc', tf.Variable(tf.random_normal([self.arch_params['n_hidden_1'], self.arch_params['out_dim']],
+                                                stddev=self.solver_params['weights_stddev']))),
         ])
 
         biases = OrderedDict([
-            ('b0', tf.Variable(tf.random_normal([self.arch_params['n_hidden_0']], stddev=self.solver_params['weights_stddev']))),
-            ('b1', tf.Variable(tf.random_normal([self.arch_params['n_hidden_1']], stddev=self.solver_params['weights_stddev']))),
-            ('bc', tf.Variable(tf.random_normal([self.arch_params['out_dim']], stddev=self.solver_params['weights_stddev'])))
+            ('b0', tf.Variable(
+                tf.random_normal([self.arch_params['n_hidden_0']], stddev=self.solver_params['weights_stddev']))),
+            ('b1', tf.Variable(
+                tf.random_normal([self.arch_params['n_hidden_1']], stddev=self.solver_params['weights_stddev']))),
+            ('bc',
+             tf.Variable(tf.random_normal([self.arch_params['out_dim']], stddev=self.solver_params['weights_stddev'])))
         ])
         return weights, biases
 
@@ -110,10 +109,3 @@ class Policy(object):
         self.reset_grad_op = []
         for acc_grad in self.accum_grads.values():
             self.reset_grad_op.append(acc_grad.assign(0. * acc_grad))
-
-    def copy_weights(self, weights, biases):
-        self.copy_weights_op = []
-        for key, value in self.weights.iteritems():
-            self.copy_weights_op.append(value.assign(weights[key]))
-        for key, value in self.biases.iteritems():
-            self.copy_weights_op.append(value.assign(biases[key]))

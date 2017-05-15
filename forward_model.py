@@ -14,10 +14,7 @@ class ForwardModel(object):
             'encoding_dim': encoding_size,
             'output_dim': state_size
         }
-        self.training_params = {
-            'lr': lr
-        }
-
+        self.lr = lr
         self.create_variables()
 
     def forward(self, input):
@@ -49,20 +46,19 @@ class ForwardModel(object):
     def backward(self, loss):
 
         # create an optimizer
-        opt = tf.train.AdamOptimizer(learning_rate=self.training_params['lr'])
+        opt = tf.train.AdamOptimizer(learning_rate=self.lr)
 
         # compute the gradients for a list of variables
         grads_and_vars = opt.compute_gradients(loss=loss, var_list=self.weights.values())
-        mean_abs_grad, mean_abs_w = common.compute_mean_abs_norm(grads_and_vars)
 
         # apply the gradient
         apply_grads = opt.apply_gradients(grads_and_vars)
 
-        return apply_grads, mean_abs_grad, mean_abs_w
+        return apply_grads
 
     def train(self, objective):
         self.loss = objective
-        self.minimize, self.mean_abs_grad, self.mean_abs_w = self.backward(self.loss)
+        self.minimize = self.backward(self.loss)
         self.loss_summary = tf.summary.scalar('loss_t', objective)
 
     def create_variables(self):
