@@ -22,7 +22,6 @@ class MGAIL(object):
         self.gamma = tf.placeholder("float", shape=(), name='gamma')
         self.temp = tf.placeholder("float", shape=(), name='temperature')
         self.noise = tf.placeholder("float", shape=(), name='noise_flag')
-        self.noise_mean = tf.placeholder("float", shape=self.env.action_size)
         self.do_keep_prob = tf.placeholder("float", shape=(), name='do_keep_prob')
 
         # Create MGAIL blocks
@@ -74,7 +73,7 @@ class MGAIL(object):
 
         # 1. Forward Model
         initial_gru_state = np.ones((1, self.forward_model.arch_params['encoding_dim']))
-        forward_model_prediction, gru_state = self.forward_model.forward([states_, actions, initial_gru_state])
+        forward_model_prediction, _ = self.forward_model.forward([states_, actions, initial_gru_state])
         forward_model_loss = tf.reduce_mean(tf.square(states-forward_model_prediction))
         self.forward_model.train(objective=forward_model_loss)
 
@@ -87,31 +86,28 @@ class MGAIL(object):
         self.discriminator.acc = tf.reduce_mean(tf.cast(correct_predictions, "float"))
         # 2.2 prediction
         d_cross_entropy = tf.nn.softmax_cross_entropy_with_logits(logits=d, labels=labels)
-        # cost sensitive weighting (weigh true=exprt, predict=agent mistakes)
+        # cost sensitive weighting (weight true=expert, predict=agent mistakes)
         d_loss_weighted = self.env.cost_sensitive_weight * tf.multiply(tf.to_float(tf.equal(tf.squeeze(self.label), 1.)), d_cross_entropy) +\
                                                            tf.multiply(tf.to_float(tf.equal(tf.squeeze(self.label), 0.)), d_cross_entropy)
         discriminator_loss = tf.reduce_mean(d_loss_weighted)
-
         self.discriminator.train(objective=discriminator_loss)
-        self.discriminator.acc_summary = tf.summary.scalar('acc_d', self.discriminator.acc)
 
         # 3. Collect experience
         mu = self.policy.forward(states)
         if self.env.continuous_actions:
             a = common.denormalize(mu, self.er_expert.actions_mean, self.er_expert.actions_std)
-            eta = tf.random_normal(shape=tf.shape(a), stddev=self.env.sigma, mean=self.noise_mean)
+            eta = tf.random_normal(shape=tf.shape(a), stddev=self.env.sigma)
             self.action_test = tf.squeeze(a + self.noise * eta)
         else:
             a = common.gumbel_softmax(logits=mu, temperature=self.temp)
             self.action_test = tf.argmax(a, dimension=1)
-
 
         # 4.3 AL
         def policy_loop(state_, t, total_cost, total_trans_err, _):
             mu = self.policy.forward(state_)
 
             if self.env.continuous_actions:
-                eta = self.env.sigma * tf.random_normal(shape=tf.shape(mu), mean=self.noise_mean)
+                eta = self.env.sigma * tf.random_normal(shape=tf.shape(mu))
                 action = mu + eta
             else:
                 action = common.gumbel_softmax_sample(logits=mu, temperature=self.temp)
@@ -150,7 +146,7 @@ class MGAIL(object):
 
         state_0 = tf.slice(states, [0, 0], [1, -1])
         loop_outputs = tf.while_loop(policy_stop_condition, policy_loop, [state_0, 0., 0., 0., False])
-        self.policy.train(objective=loop_outputs[2], mode='al')
+        self.policy.train(objective=loop_outputs[2])
 
     def al_loss(self, d):
         logit_agent, logit_expert = tf.split(axis=1, num_or_size_splits=2, value=d)

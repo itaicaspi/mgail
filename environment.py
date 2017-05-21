@@ -70,7 +70,6 @@ class Environment(object):
         self.trained_model = None
         self.train_mode = True
         self.expert_data = 'expert_trajectories/hopper_er.bin'
-        self.pre_load_buffer = True
         self.n_train_iters = 1000000
         self.n_episodes_test = 1
         self.test_interval = 1000
@@ -79,10 +78,6 @@ class Environment(object):
         self.save_models = True
         self.config_dir = None
         self.continuous_actions = True
-        self.weight_decay = 1e-7
-        self.save_agent_er = False
-        self.save_agent_at_itr = 50000
-        self.good_reward = 5000
 
         # Main parameters to play with:
         self.er_agent_size = 50000
@@ -92,13 +87,13 @@ class Environment(object):
         self.discr_policy_itrvl = 100
         self.gamma = 0.99
         self.batch_size = 70
+        self.weight_decay = 1e-7
         self.policy_al_w = 1e-2
         self.policy_tr_w = 1e-4
         self.policy_accum_steps = 7
-        self.total_trans_err_allowed = 1000# 1e-0
+        self.total_trans_err_allowed = 1000
         self.temp = 1.
         self.cost_sensitive_weight = 0.8
-        self.biased_noise = 0
         self.w_std = 0.15
         self.noise_intensity = 6.
         self.do_keep_prob = 0.75
@@ -110,8 +105,8 @@ class Environment(object):
 
         # Learning rates
         self.fm_lr = 1e-4
-        self.d_lr = 0.001
-        self.p_lr = 0.0001
+        self.d_lr = 1e-3
+        self.p_lr = 1e-4
 
 
 

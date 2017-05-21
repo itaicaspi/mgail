@@ -59,7 +59,6 @@ class Discriminator(object):
     def train(self, objective):
         self.loss = objective
         self.minimize = self.backward(self.loss)
-        self.loss_summary = tf.summary.scalar('loss_d', objective)
 
     def create_variables(self):
         weights = OrderedDict([

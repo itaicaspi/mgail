@@ -87,4 +87,5 @@ class ER(object):
             qvels = []
         terminals = self.terminals[indexes]
 
-        return self.prestates, actions, rewards, self.poststates, terminals, qpos, qvels
+        return np.squeeze(self.prestates, axis=1), actions, rewards, \
+               np.squeeze(self.poststates, axis=1), terminals, qpos, qvels

@@ -44,8 +44,6 @@ class Driver(object):
     def train_forward_model(self):
         alg = self.algorithm
         states_, actions, _, states = self.algorithm.er_agent.sample()[:4]
-        states_ = np.squeeze(states_, axis=1)
-        states = np.squeeze(states, axis=1)
         fetches = [alg.forward_model.minimize, alg.forward_model.loss]
         feed_dict = {alg.states_: states_, alg.states: states, alg.actions: actions,
                      alg.do_keep_prob: self.env.do_keep_prob}
@@ -54,14 +52,11 @@ class Driver(object):
 
     def train_discriminator(self):
         alg = self.algorithm
+        # get states and actions
         state_a_, action_a = self.algorithm.er_agent.sample()[:2]
-        state_a_ = np.squeeze(state_a_, axis=1)
-
         state_e_, action_e = self.algorithm.er_expert.sample()[:2]
-        state_e_ = np.squeeze(state_e_, axis=1)
         states = np.concatenate([state_a_, state_e_])
         actions = np.concatenate([action_a, action_e])
-
         # labels (policy/expert) : 0/1, and in 1-hot form: policy-[1,0], expert-[0,1]
         labels_a = np.zeros(shape=(state_a_.shape[0],))
         labels_e = np.ones(shape=(state_e_.shape[0],))
@@ -73,7 +68,7 @@ class Driver(object):
         self.update_stats('discriminator', 'loss', run_vals[1])
         self.update_stats('discriminator', 'accuracy', run_vals[2])
 
-    def train_policy(self, mode):
+    def train_policy(self):
         alg = self.algorithm
 
         # reset the policy gradient
@@ -82,7 +77,6 @@ class Driver(object):
         # Adversarial Learning
         if self.env.get_status():
             state = self.env.reset()
-            self.episode_noise_shift = self.env.biased_noise * np.random.normal(scale=alg.env.sigma)
         else:
             state = self.env.get_state()
 
@@ -91,8 +85,7 @@ class Driver(object):
             # accumulate AL gradient
             fetches = [alg.policy.accum_grads_al, alg.policy.loss_al]
             feed_dict = {alg.states: np.array([state]), alg.gamma: self.env.gamma,
-                         alg.do_keep_prob: self.env.do_keep_prob, alg.noise: 1., alg.temp: self.env.temp,
-                         alg.noise_mean: self.episode_noise_shift}
+                         alg.do_keep_prob: self.env.do_keep_prob, alg.noise: 1., alg.temp: self.env.temp}
             run_vals = self.sess.run(fetches, feed_dict)
             self.update_stats('policy', 'loss', run_vals[1])
 
@@ -108,8 +101,6 @@ class Driver(object):
         else:
             qposs, qvels = alg.er_expert.sample()[5:]
             observation = self.env.reset(qpos=qposs[0], qvel=qvels[0])
-
-        self.episode_noise_shift = self.env.biased_noise * np.random.normal(scale=alg.env.sigma)
 
         do_keep_prob = self.env.do_keep_prob
         t = 0
@@ -128,7 +119,6 @@ class Driver(object):
             a = self.sess.run(fetches=[alg.action_test], feed_dict={alg.states: np.reshape(observation, [1, -1]),
                                                                     alg.do_keep_prob: do_keep_prob,
                                                                     alg.noise: noise_flag,
-                                                                    alg.noise_mean: self.episode_noise_shift,
                                                                     alg.temp: self.env.temp})
 
             observation, reward, done, info, qpos, qvel = self.env.step(a, mode='python')
@@ -146,8 +136,6 @@ class Driver(object):
                 alg.er_agent.add(actions=action, rewards=[reward], next_states=[observation], terminals=[done],
                                  qposs=[qpos], qvels=[qvel])
 
-        self.avg_policy_time = t
-
         return R
 
     def train_step(self):
@@ -157,11 +145,11 @@ class Driver(object):
         # policy: learning in adversarial mode
 
         # Fill Experience Buffer
-        if self.itr == 0 and self.env.pre_load_buffer:
+        if self.itr == 0:
             while self.algorithm.er_agent.current == self.algorithm.er_agent.count:
                 self.collect_experience()
-                buf = 'Collecting examples...%d/%d' % (
-                self.algorithm.er_agent.current, self.algorithm.er_agent.states.shape[0])
+                buf = 'Collecting examples...%d/%d' % \
+                      (self.algorithm.er_agent.current, self.algorithm.er_agent.states.shape[0])
                 sys.stdout.write('\r' + buf)
 
         # Adversarial Learning
@@ -177,7 +165,7 @@ class Driver(object):
                 if self.discriminator_policy_switch:
                     self.train_discriminator()
                 else:
-                    self.train_policy(self.mode)
+                    self.train_policy()
 
                 if self.itr % self.env.collect_experience_interval == 0:
                     self.collect_experience(start_at_zero=False, n_steps=self.env.n_steps_train)
@@ -198,7 +186,7 @@ class Driver(object):
                    self.algorithm.er_agent.count, self.reward_mean, self.reward_std)
         else:
             buf = "processing iter: %d, loss(forward_model,discriminator,policy): %s, disc_acc: %f" % (
-            self.itr, self.loss, self.disc_acc)
+                self.itr, self.loss, self.disc_acc)
         sys.stdout.write('\r' + buf)
 
     def save_model(self, dir_name=None):

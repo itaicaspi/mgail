@@ -5,7 +5,7 @@ import common
 
 
 class ForwardModel(object):
-    def __init__(self, state_size, action_size, encoding_size=50, lr=1e-4):
+    def __init__(self, state_size, action_size, encoding_size, lr):
         self.state_size = state_size
         self.action_size = action_size
 
@@ -59,7 +59,6 @@ class ForwardModel(object):
     def train(self, objective):
         self.loss = objective
         self.minimize = self.backward(self.loss)
-        self.loss_summary = tf.summary.scalar('loss_t', objective)
 
     def create_variables(self):
         # set all the necessary weights and biases according to the forward model structure

@@ -1,6 +1,4 @@
-import time
 import numpy as np
-import common
 import os
 from environment import Environment
 from driver import Driver
@@ -32,7 +30,7 @@ def dispatcher(env):
             driver.print_info_line('full')
 
             # save snapshot
-            if env.train_mode and (env.save_models or driver.reward_mean > env.good_reward):
+            if env.train_mode and env.save_models:
                 driver.save_model(dir_name=env.config_dir)
 
         driver.itr += 1

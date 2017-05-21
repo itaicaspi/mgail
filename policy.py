@@ -73,11 +73,9 @@ class Policy(object):
 
         return apply_grads, accum_grads_op
 
-    def train(self, objective, mode):
-        setattr(self, 'loss_' + mode, objective)
-        backward = self.backward(getattr(self, 'loss_' + mode))
-        setattr(self, 'apply_grads_' + mode, backward[0])
-        setattr(self, 'accum_grads_' + mode, backward[1])
+    def train(self, objective):
+        self.loss_al = objective
+        self.apply_grads_al, self.accum_grads_al = self.backward(self.loss_al)
 
     def create_variables(self):
         weights = OrderedDict([
