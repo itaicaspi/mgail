@@ -61,7 +61,7 @@ class ForwardModel(object):
         self.minimize = self.backward(self.loss)
 
     def create_variables(self):
-        # set all the necessary weights and biases according to the forward model structure
+        # we create all the weights and biases once and reuse them between graph runs
         self.weights = OrderedDict()
         self.weights.update(ops.gru_variables(self.arch_params['encoding_dim'], self.arch_params['encoding_dim'], "gru1"))
         self.weights.update(ops.linear_variables(self.arch_params['encoding_dim'], self.arch_params['encoding_dim'], 'decoder1'))

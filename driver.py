@@ -180,13 +180,10 @@ class Driver(object):
 
     def print_info_line(self, mode):
         if mode == 'full':
-            buf = '%s Training(%s): iter %d, loss: %s, disc_acc: %.2f,' \
-                  ' er_count: %d, R: %.1f, R_std: %.2f\n' % \
-                  (time.strftime("%H:%M:%S"), self.mode, self.itr, self.loss, self.disc_acc,
-                   self.algorithm.er_agent.count, self.reward_mean, self.reward_std)
+            buf = '%s Training(%s): iter %d, loss: %s R: %.1f, R_std: %.2f\n' % \
+                  (time.strftime("%H:%M:%S"), self.mode, self.itr, self.loss, self.reward_mean, self.reward_std)
         else:
-            buf = "processing iter: %d, loss(forward_model,discriminator,policy): %s, disc_acc: %f" % (
-                self.itr, self.loss, self.disc_acc)
+            buf = "processing iter: %d, loss(forward_model,discriminator,policy): %s" % (self.itr, self.loss)
         sys.stdout.write('\r' + buf)
 
     def save_model(self, dir_name=None):

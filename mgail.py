@@ -41,7 +41,6 @@ class MGAIL(object):
                               out_dim=self.env.action_size,
                               size=self.env.p_size,
                               lr=self.env.p_lr,
-                              w_std=self.env.w_std,
                               do_keep_prob=self.do_keep_prob,
                               n_accum_steps=self.env.policy_accum_steps,
                               weight_decay=self.env.weight_decay)

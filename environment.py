@@ -94,7 +94,6 @@ class Environment(object):
         self.total_trans_err_allowed = 1000
         self.temp = 1.
         self.cost_sensitive_weight = 0.8
-        self.w_std = 0.15
         self.noise_intensity = 6.
         self.do_keep_prob = 0.75
 

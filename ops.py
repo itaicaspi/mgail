@@ -1,17 +1,5 @@
 import tensorflow as tf
 
-
-def dense(input, output_size, activation):
-    assert len(input.shape) == 2
-    input_size = input.shape[-1].value
-    weights = weight_variable([input_size, output_size])
-    biases = bias_variable([output_size])
-    output = tf.matmul(input, weights) + biases
-    if activation:
-        output = activation(output)
-    return output, weights, biases
-
-
 def linear_variables(input_size, output_size, name):
     weights = {}
     weights[name+'_weights'] = weight_variable([input_size, output_size])
@@ -19,11 +7,11 @@ def linear_variables(input_size, output_size, name):
     return weights
 
 def weight_variable(shape):
-    initial = tf.truncated_normal(shape, stddev=0.1, dtype=tf.float32)
+    initial = tf.random_normal(shape, stddev=0.15, dtype=tf.float32)
     return tf.Variable(initial)
 
 def bias_variable(shape):
-    initial = tf.constant(0.1, shape=shape, dtype=tf.float32)
+    initial = tf.random_normal(shape, stddev=0.15, dtype=tf.float32)
     return tf.Variable(initial)
 
 def gru_layer(input, hidden, weights, name):
