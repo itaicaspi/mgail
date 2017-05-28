@@ -103,7 +103,7 @@ class MGAIL(object):
 
         # 4.3 AL
         def policy_loop(state_, t, total_cost, total_trans_err, _):
-            mu = self.policy.forward(state_)
+            mu = self.policy.forward(state_, reuse=True)
 
             if self.env.continuous_actions:
                 eta = self.env.sigma * tf.random_normal(shape=tf.shape(mu))
@@ -112,7 +112,7 @@ class MGAIL(object):
                 action = common.gumbel_softmax_sample(logits=mu, temperature=self.temp)
 
             # minimize the gap between agent logit (d[:,0]) and expert logit (d[:,1])
-            d = self.discriminator.forward(state_, action)
+            d = self.discriminator.forward(state_, action, reuse=True)
             cost = self.al_loss(d)
 
             # add step cost
@@ -129,7 +129,7 @@ class MGAIL(object):
             state_e = common.normalize(state_env, self.er_expert.states_mean, self.er_expert.states_std)
             state_e = tf.stop_gradient(state_e)
 
-            state_a, _ = self.forward_model.forward([state_, action, initial_gru_state])
+            state_a, _ = self.forward_model.forward([state_, action, initial_gru_state], reuse=True)
 
             state, nu = common.re_parametrization(state_e=state_e, state_a=state_a)
             total_trans_err += tf.reduce_mean(abs(nu))

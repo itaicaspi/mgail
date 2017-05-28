@@ -3,10 +3,6 @@ import tensorflow as tf
 import numpy as np
 
 
-def dotproduct(v1, v2):
-    return sum((a*b) for a,b in zip(v1,v2))
-
-
 def save_params(fname, saver, session):
     saver.save(session, fname)
 
