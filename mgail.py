@@ -71,7 +71,7 @@ class MGAIL(object):
             actions = self.actions
 
         # 1. Forward Model
-        initial_gru_state = np.ones((1, self.forward_model.arch_params['encoding_dim']))
+        initial_gru_state = np.ones((1, self.forward_model.encoding_size))
         forward_model_prediction, _ = self.forward_model.forward([states_, actions, initial_gru_state])
         forward_model_loss = tf.reduce_mean(tf.square(states-forward_model_prediction))
         self.forward_model.train(objective=forward_model_loss)
