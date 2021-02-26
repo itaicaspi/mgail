@@ -121,7 +121,7 @@ class Driver(object):
                                                                     alg.noise: noise_flag,
                                                                     alg.temp: self.env.temp})
 
-            observation, reward, done, info, qpos, qvel = self.env.step(a, mode='python')
+            observation, reward, done, info = self.env.step(a, mode='python')
 
             done = done or t > n_steps
             t += 1
@@ -133,8 +133,7 @@ class Driver(object):
                 else:
                     action = np.zeros((1, self.env.action_size))
                     action[0, a[0]] = 1
-                alg.er_agent.add(actions=action, rewards=[reward], next_states=[observation], terminals=[done],
-                                 qposs=[qpos], qvels=[qvel])
+                alg.er_agent.add(actions=action, rewards=[reward], next_states=[observation], terminals=[done])
 
         return R
 

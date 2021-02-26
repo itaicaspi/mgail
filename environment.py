@@ -18,16 +18,14 @@ class Environment(object):
         result = self.gym.step(action)
         self.state, self.reward, self.done, self.info = result[:4]
         if self.random_initialization:
-            self.qpos, self.qvel = self.gym.env.model.data.qpos.flatten(), self.gym.env.model.data.qvel.flatten()
-            return np.float32(self.state), np.float32(self.reward), self.done, np.float32(self.qpos), np.float32(self.qvel)
+            return np.float32(self.state), np.float32(self.reward), self.done
         else:
             return np.float32(self.state), np.float32(self.reward), self.done
 
     def step(self, action, mode):
-        qvel, qpos = [], []
         if mode == 'tensorflow':
             if self.random_initialization:
-                state, reward, done, qval, qpos = tf.py_func(self._step, inp=[action], Tout=[tf.float32, tf.float32, tf.bool, tf.float32, tf.float32], name='env_step_func')
+                state, reward, done = tf.py_func(self._step, inp=[action], Tout=[tf.float32, tf.float32, tf.bool, tf.float32, tf.float32], name='env_step_func')
             else:
                 state, reward, done = tf.py_func(self._step, inp=[action],
                                                  Tout=[tf.float32, tf.float32, tf.bool],
@@ -37,17 +35,15 @@ class Environment(object):
             done.set_shape(())
         else:
             if self.random_initialization:
-                state, reward, done, qvel, qpos = self._step(action)
+                state, reward, done = self._step(action)
             else:
                 state, reward, done = self._step(action)
 
-        return state, reward, done, 0., qvel, qpos
+        return state, reward, done, 0.
 
-    def reset(self, qpos=None, qvel=None):
+    def reset(self):
         self.t = 0
         self.state = self.gym.reset()
-        if self.random_initialization and qpos is not None and qvel is not None:
-            self.gym.env.set_state(qpos, qvel)
         return self.state
 
     def get_status(self):
@@ -63,8 +59,6 @@ class Environment(object):
         self.state_size = self.gym.observation_space.shape[0]
         self.action_size = self.gym.action_space.shape[0]
         self.action_space = np.asarray([None]*self.action_size)
-        self.qpos_size = self.gym.env.data.qpos.shape[0]
-        self.qvel_size = self.gym.env.data.qvel.shape[0]
 
     def _train_params(self):
         self.trained_model = None
