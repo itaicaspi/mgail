@@ -38,7 +38,7 @@ def dispatcher(env):
 
 if __name__ == '__main__':
     # load environment
-    env = Environment(os.path.curdir, 'Hopper-v1')
+    env = Environment(os.path.curdir, 'MiniGrid-FourRooms-v0')
 
     # start training
     dispatcher(env=env)
