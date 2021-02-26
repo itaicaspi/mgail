@@ -1,15 +1,75 @@
-import cPickle
+import pickle
 import tensorflow as tf
 import numpy as np
+import h5py
 
+from ER import ER
 
 def save_params(fname, saver, session):
     saver.save(session, fname)
 
+def get_keys(h5file):
+    keys = []
+    def visitor(name, item):
+        if isinstance(item, h5py.Dataset):
+            keys.append(name)
+    h5file.visititems(visitor)
+    return keys
+
+def get_d4rl_dataset(h5path):
+    dataset_file = h5py.File(h5path, 'r')
+    data_dict = {}
+    for k in get_keys(dataset_file):
+        try:
+            # first try loading as an array
+            data_dict[k] = dataset_file[k][:]
+        except ValueError as e: # try loading as a scalar
+            data_dict[k] = dataset_file[k][()]
+    dataset_file.close()
+
+    # Run a few quick sanity checks
+    for key in ['observations', 'actions', 'rewards', 'terminals']:
+        assert key in data_dict, 'Dataset is missing key %s' % key
+    N_samples = data_dict['observations'].shape[0]
+    if data_dict['rewards'].shape == (N_samples, 1):
+        data_dict['rewards'] = data_dict['rewards'][:,0]
+    assert data_dict['rewards'].shape == (N_samples,), 'Reward has wrong shape: %s' % (str(data_dict['rewards'].shape))
+    if data_dict['terminals'].shape == (N_samples, 1):
+        data_dict['terminals'] = data_dict['terminals'][:,0]
+    assert data_dict['terminals'].shape == (N_samples,), 'Terminals has wrong shape: %s' % (str(data_dict['rewards'].shape))
+    return data_dict
+
+def load_d4rl_er(h5path, batch_size, history_length, traj_length):
+    data_dict = get_d4rl_dataset(h5path)
+    data_size = data_dict["rewards"].shape[0]
+    flattened_states = data_dict["observations"].reshape(data_size, -1)
+    flattened_post_states = np.roll(flattened_states, -1)
+    flattened_post_states[-1] = flattened_post_states[-2] # the last post-state uses the pre-state
+    terminals = data_dict["terminals"]
+    inverted_terminals= terminals.invert()
+    # masked out other states, only keep terminal states
+    terminal_post_states = np.ma.masked_array(
+        flattened_states,
+        mask=np.column_stack([inverted_terminals for _ in flattened_post_states.shape[-1]]),
+        fill_value=0
+    )
+    # masked out terminal states
+    flattened_post_states = np.ma.masked_array(
+        flattened_post_states,
+        mask=np.column_stack([terminals for _ in flattened_post_states.shape[-1]]),
+        fill_value=0
+    )
+    # add back the terminal states
+    flattened_post_states += terminal_post_states
+    state_dim = flattened_states.shape[-1]
+    er = ER(data_size, state_dim, max(data_dict["actions"]), batch_size, history_length)
+    er.add(data_dict["actions"], data_dict["rewards"], flattened_post_states, terminals)
+    er = set_er_stats(er, history_length, traj_length)
+    return er
 
 def load_er(fname, batch_size, history_length, traj_length):
-    f = file(fname, 'rb')
-    er = cPickle.load(f)
+    f = open(fname, 'rb')
+    er = pickle.load(f)
     er.batch_size = batch_size
     er = set_er_stats(er, history_length, traj_length)
     return er
