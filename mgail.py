@@ -55,7 +55,7 @@ class MGAIL(object):
                            batch_size=self.env.batch_size,
                            history_length=1)
 
-        self.er_expert = common.load_er(fname=os.path.join(self.env.run_dir, self.env.expert_data),
+        self.er_expert = common.load_d4rl_er(h5path=os.path.join(self.env.run_dir, self.env.expert_data),
                                         batch_size=self.env.batch_size,
                                         history_length=1,
                                         traj_length=2)
