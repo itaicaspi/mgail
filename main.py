@@ -2,7 +2,7 @@ import numpy as np
 import os
 from environment import Environment
 from driver import Driver
-
+import gym_minigrid
 
 def dispatcher(env):
 

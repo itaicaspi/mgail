@@ -1,4 +1,5 @@
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
+tf.disable_v2_behavior()
 import numpy as np
 import gym
 
@@ -18,14 +19,14 @@ class Environment(object):
         result = self.gym.step(action)
         self.state, self.reward, self.done, self.info = result[:4]
         if self.random_initialization:
-            return np.float32(self.state), np.float32(self.reward), self.done
+            return np.float32(self.state['image']).reshape(1,-1), np.float32(self.reward), self.done
         else:
-            return np.float32(self.state), np.float32(self.reward), self.done
+            return np.float32(self.state['image']).reshape(1,-1), np.float32(self.reward), self.done
 
     def step(self, action, mode):
         if mode == 'tensorflow':
             if self.random_initialization:
-                state, reward, done = tf.py_func(self._step, inp=[action], Tout=[tf.float32, tf.float32, tf.bool, tf.float32, tf.float32], name='env_step_func')
+                state, reward, done, _, _ = tf.py_func(self._step, inp=[action], Tout=[tf.float32, tf.float32, tf.bool, tf.float32, tf.float32], name='env_step_func')
             else:
                 state, reward, done = tf.py_func(self._step, inp=[action],
                                                  Tout=[tf.float32, tf.float32, tf.bool],
@@ -56,9 +57,11 @@ class Environment(object):
         self.gym.render()
 
     def _connect(self):
-        self.state_size = self.gym.observation_space.shape[0]
-        self.action_size = self.gym.action_space.shape[0]
-        self.action_space = np.asarray([None]*self.action_size)
+        self.action_size = self.gym.action_space.n
+        self.action_space = np.asarray([None] * self.action_size)
+        self.state_size = 7 * 7 * 3
+        self.qpos_size = self.gym.agent_pos.shape
+        self.qvel_size = 1
 
     def _train_params(self):
         self.trained_model = None
@@ -71,7 +74,7 @@ class Environment(object):
         self.vis_flag = True
         self.save_models = True
         self.config_dir = None
-        self.continuous_actions = True
+        self.continuous_actions = False
 
         # Main parameters to play with:
         self.er_agent_size = 50000

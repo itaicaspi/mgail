@@ -1,5 +1,6 @@
 import numpy as np
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
+tf.disable_v2_behavior()
 
 import os
 import common
@@ -49,9 +50,6 @@ class MGAIL(object):
         self.er_agent = ER(memory_size=self.env.er_agent_size,
                            state_dim=self.env.state_size,
                            action_dim=self.env.action_size,
-                           reward_dim=1,  # stub connection
-                           qpos_dim=self.env.qpos_size,
-                           qvel_dim=self.env.qvel_size,
                            batch_size=self.env.batch_size,
                            history_length=1)
 

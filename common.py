@@ -1,5 +1,6 @@
 import pickle
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
+tf.disable_v2_behavior()
 import numpy as np
 import h5py
 
@@ -43,26 +44,26 @@ def load_d4rl_er(h5path, batch_size, history_length, traj_length):
     data_dict = get_d4rl_dataset(h5path)
     data_size = data_dict["rewards"].shape[0]
     flattened_states = data_dict["observations"].reshape(data_size, -1)
-    flattened_post_states = np.roll(flattened_states, -1)
+    flattened_post_states = np.roll(flattened_states, -1, axis=0)
     flattened_post_states[-1] = flattened_post_states[-2] # the last post-state uses the pre-state
     terminals = data_dict["terminals"]
-    inverted_terminals= terminals.invert()
+    inverted_terminals= np.invert(terminals)
     # masked out other states, only keep terminal states
     terminal_post_states = np.ma.masked_array(
         flattened_states,
-        mask=np.column_stack([inverted_terminals for _ in flattened_post_states.shape[-1]]),
+        mask=np.column_stack([inverted_terminals for _ in range(flattened_post_states.shape[-1])]),
         fill_value=0
     )
     # masked out terminal states
     flattened_post_states = np.ma.masked_array(
         flattened_post_states,
-        mask=np.column_stack([terminals for _ in flattened_post_states.shape[-1]]),
+        mask=np.column_stack([terminals for _ in range(flattened_post_states.shape[-1])]),
         fill_value=0
     )
     # add back the terminal states
     flattened_post_states += terminal_post_states
     state_dim = flattened_states.shape[-1]
-    er = ER(data_size, state_dim, max(data_dict["actions"]), batch_size, history_length)
+    er = ER(data_size, state_dim, int(max(data_dict["actions"])), batch_size, history_length)
     er.add(data_dict["actions"], data_dict["rewards"], flattened_post_states, terminals)
     er = set_er_stats(er, history_length, traj_length)
     return er

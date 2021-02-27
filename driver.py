@@ -1,7 +1,8 @@
 import sys
 import time
 import numpy as np
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
+tf.disable_v2_behavior()
 import common
 from mgail import MGAIL
 
@@ -98,6 +99,7 @@ class Driver(object):
         # environment initialization point
         if start_at_zero:
             observation = self.env.reset()
+            observation = observation['image']
         else:
             qposs, qvels = alg.er_expert.sample()[5:]
             observation = self.env.reset(qpos=qposs[0], qvel=qvels[0])
