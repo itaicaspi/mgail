@@ -78,8 +78,10 @@ class Driver(object):
         # Adversarial Learning
         if self.env.get_status():
             state = self.env.reset()
+            state = state['image'].flatten()
         else:
             state = self.env.get_state()
+            state = state['image'].flatten()
 
         # Accumulate the (noisy) adversarial gradient
         for i in range(self.env.policy_accum_steps):
