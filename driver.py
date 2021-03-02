@@ -11,9 +11,9 @@ class Driver(object):
 
         self.env = environment
         self.algorithm = MGAIL(environment=self.env)
-        self.init_graph = tf.global_variables_initializer()
-        self.saver = tf.train.Saver()
-        self.sess = tf.Session()
+        self.init_graph = tf.compat.v1.global_variables_initializer()
+        self.saver = tf.compat.v1.train.Saver()
+        self.sess = tf.compat.v1.Session()
         if self.env.trained_model:
             self.saver.restore(self.sess, self.env.trained_model)
         else:
@@ -77,8 +77,10 @@ class Driver(object):
         # Adversarial Learning
         if self.env.get_status():
             state = self.env.reset()
+            state = state['image'].flatten()
         else:
             state = self.env.get_state()
+            state = state['image'].flatten()
 
         # Accumulate the (noisy) adversarial gradient
         for i in range(self.env.policy_accum_steps):
@@ -98,9 +100,10 @@ class Driver(object):
         # environment initialization point
         if start_at_zero:
             observation = self.env.reset()
+            observation = observation['image']
         else:
-            qposs, qvels = alg.er_expert.sample()[5:]
-            observation = self.env.reset(qpos=qposs[0], qvel=qvels[0])
+            states, actions, rewards, posstates, terminals = alg.er_expert.sample()
+            observation = states[5]
 
         do_keep_prob = self.env.do_keep_prob
         t = 0

@@ -18,16 +18,16 @@ class Environment(object):
         result = self.gym.step(action)
         self.state, self.reward, self.done, self.info = result[:4]
         if self.random_initialization:
-            return np.float32(self.state), np.float32(self.reward), self.done
+            return np.float32(self.state['image']).reshape(1,-1), np.float32(self.reward), self.done
         else:
-            return np.float32(self.state), np.float32(self.reward), self.done
+            return np.float32(self.state['image']).reshape(1,-1), np.float32(self.reward), self.done
 
     def step(self, action, mode):
         if mode == 'tensorflow':
             if self.random_initialization:
-                state, reward, done = tf.py_func(self._step, inp=[action], Tout=[tf.float32, tf.float32, tf.bool, tf.float32, tf.float32], name='env_step_func')
+                state, reward, done = tf.compat.v1.py_func(self._step, inp=[action], Tout=[tf.float32, tf.float32, tf.bool], name='env_step_func')
             else:
-                state, reward, done = tf.py_func(self._step, inp=[action],
+                state, reward, done = tf.compat.v1.py_func(self._step, inp=[action],
                                                  Tout=[tf.float32, tf.float32, tf.bool],
                                                  name='env_step_func')
 
@@ -56,25 +56,27 @@ class Environment(object):
         self.gym.render()
 
     def _connect(self):
-        self.state_size = self.gym.observation_space.shape[0]
-        self.action_size = self.gym.action_space.shape[0]
-        self.action_space = np.asarray([None]*self.action_size)
+        self.action_size = 3
+        self.action_space = np.asarray([None] * self.action_size)
+        self.state_size = 7 * 7 * 3
+        self.qpos_size = self.gym.agent_pos.shape
+        self.qvel_size = 1
 
     def _train_params(self):
         self.trained_model = None
         self.train_mode = True
         self.expert_data = 'expert_trajectories/minigrid4rooms.hdf5'
-        self.n_train_iters = 1000000
+        self.n_train_iters = 10000
         self.n_episodes_test = 1
-        self.test_interval = 1000
-        self.n_steps_test = 1000
+        self.test_interval = 100
+        self.n_steps_test = 500
         self.vis_flag = True
         self.save_models = True
         self.config_dir = None
-        self.continuous_actions = True
+        self.continuous_actions = False
 
         # Main parameters to play with:
-        self.er_agent_size = 50000
+        self.er_agent_size = 1000
         self.prep_time = 1000
         self.collect_experience_interval = 15
         self.n_steps_train = 10

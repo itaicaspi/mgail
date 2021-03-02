@@ -43,26 +43,26 @@ def load_d4rl_er(h5path, batch_size, history_length, traj_length):
     data_dict = get_d4rl_dataset(h5path)
     data_size = data_dict["rewards"].shape[0]
     flattened_states = data_dict["observations"].reshape(data_size, -1)
-    flattened_post_states = np.roll(flattened_states, -1)
+    flattened_post_states = np.roll(flattened_states, -1, axis=0)
     flattened_post_states[-1] = flattened_post_states[-2] # the last post-state uses the pre-state
     terminals = data_dict["terminals"]
-    inverted_terminals= terminals.invert()
+    inverted_terminals= np.invert(terminals)
     # masked out other states, only keep terminal states
     terminal_post_states = np.ma.masked_array(
         flattened_states,
-        mask=np.column_stack([inverted_terminals for _ in flattened_post_states.shape[-1]]),
+        mask=np.column_stack([inverted_terminals for _ in range(flattened_post_states.shape[-1])]),
         fill_value=0
     )
     # masked out terminal states
     flattened_post_states = np.ma.masked_array(
         flattened_post_states,
-        mask=np.column_stack([terminals for _ in flattened_post_states.shape[-1]]),
+        mask=np.column_stack([terminals for _ in range(flattened_post_states.shape[-1])]),
         fill_value=0
     )
     # add back the terminal states
     flattened_post_states += terminal_post_states
     state_dim = flattened_states.shape[-1]
-    er = ER(data_size, state_dim, max(data_dict["actions"]), batch_size, history_length)
+    er = ER(data_size, state_dim, int(max(data_dict["actions"] + 1)), batch_size, history_length)
     er.add(data_dict["actions"], data_dict["rewards"], flattened_post_states, terminals)
     er = set_er_stats(er, history_length, traj_length)
     return er
@@ -110,8 +110,8 @@ def denormalize(x, mean, std):
 
 def sample_gumbel(shape, eps=1e-20):
     """Sample from Gumbel(0, 1)"""
-    U = tf.random_uniform(shape,minval=0,maxval=1)
-    return -tf.log(-tf.log(U + eps) + eps)
+    U = tf.compat.v1.random_uniform(shape,minval=0,maxval=1)
+    return -tf.compat.v1.log(-tf.compat.v1.log(U + eps) + eps)
 
 
 def gumbel_softmax_sample(logits, temperature):
@@ -135,6 +135,6 @@ def gumbel_softmax(logits, temperature, hard=True):
     if hard:
         k = tf.shape(logits)[-1]
         #y_hard = tf.cast(tf.one_hot(tf.argmax(y,1),k), y.dtype)
-        y_hard = tf.cast(tf.equal(y, tf.reduce_max(y, 1, keep_dims=True)), y.dtype)
+        y_hard = tf.cast(tf.equal(y, tf.compat.v1.reduce_max(y, 1, keep_dims=True)), y.dtype)
         y = tf.stop_gradient(y_hard - y) + y
     return y
