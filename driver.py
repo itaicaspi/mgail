@@ -103,7 +103,7 @@ class Driver(object):
             observation = observation['image']
         else:
             states, actions, rewards, posstates, terminals = alg.er_expert.sample()
-            observation = states[5]
+            observation = states[0]
 
         do_keep_prob = self.env.do_keep_prob
         t = 0
