@@ -1,6 +1,5 @@
 import pickle
-import tensorflow.compat.v1 as tf
-tf.disable_v2_behavior()
+import tensorflow as tf
 import numpy as np
 import h5py
 
@@ -111,8 +110,8 @@ def denormalize(x, mean, std):
 
 def sample_gumbel(shape, eps=1e-20):
     """Sample from Gumbel(0, 1)"""
-    U = tf.random_uniform(shape,minval=0,maxval=1)
-    return -tf.log(-tf.log(U + eps) + eps)
+    U = tf.compat.v1.random_uniform(shape,minval=0,maxval=1)
+    return -tf.compat.v1.log(-tf.compat.v1.log(U + eps) + eps)
 
 
 def gumbel_softmax_sample(logits, temperature):
@@ -136,6 +135,6 @@ def gumbel_softmax(logits, temperature, hard=True):
     if hard:
         k = tf.shape(logits)[-1]
         #y_hard = tf.cast(tf.one_hot(tf.argmax(y,1),k), y.dtype)
-        y_hard = tf.cast(tf.equal(y, tf.reduce_max(y, 1, keep_dims=True)), y.dtype)
+        y_hard = tf.cast(tf.equal(y, tf.compat.v1.reduce_max(y, 1, keep_dims=True)), y.dtype)
         y = tf.stop_gradient(y_hard - y) + y
     return y

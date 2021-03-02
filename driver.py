@@ -1,8 +1,7 @@
 import sys
 import time
 import numpy as np
-import tensorflow.compat.v1 as tf
-tf.disable_v2_behavior()
+import tensorflow as tf
 import common
 from mgail import MGAIL
 
@@ -12,9 +11,9 @@ class Driver(object):
 
         self.env = environment
         self.algorithm = MGAIL(environment=self.env)
-        self.init_graph = tf.global_variables_initializer()
-        self.saver = tf.train.Saver()
-        self.sess = tf.Session()
+        self.init_graph = tf.compat.v1.global_variables_initializer()
+        self.saver = tf.compat.v1.train.Saver()
+        self.sess = tf.compat.v1.Session()
         if self.env.trained_model:
             self.saver.restore(self.sess, self.env.trained_model)
         else:

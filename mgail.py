@@ -1,6 +1,5 @@
 import numpy as np
-import tensorflow.compat.v1 as tf
-tf.disable_v2_behavior()
+import tensorflow as tf
 
 import os
 import common
@@ -16,14 +15,14 @@ class MGAIL(object):
         self.env = environment
 
         # Create placeholders for all the inputs
-        self.states_ = tf.placeholder("float", shape=(None, self.env.state_size), name='states_')  # Batch x State
-        self.states = tf.placeholder("float", shape=(None, self.env.state_size), name='states')  # Batch x State
-        self.actions = tf.placeholder("float", shape=(None, self.env.action_size), name='action')  # Batch x Action
-        self.label = tf.placeholder("float", shape=(None, 1), name='label')
-        self.gamma = tf.placeholder("float", shape=(), name='gamma')
-        self.temp = tf.placeholder("float", shape=(), name='temperature')
-        self.noise = tf.placeholder("float", shape=(), name='noise_flag')
-        self.do_keep_prob = tf.placeholder("float", shape=(), name='do_keep_prob')
+        self.states_ = tf.compat.v1.placeholder("float", shape=(None, self.env.state_size), name='states_')  # Batch x State
+        self.states = tf.compat.v1.placeholder("float", shape=(None, self.env.state_size), name='states')  # Batch x State
+        self.actions = tf.compat.v1.placeholder("float", shape=(None, self.env.action_size), name='action')  # Batch x Action
+        self.label = tf.compat.v1.placeholder("float", shape=(None, 1), name='label')
+        self.gamma = tf.compat.v1.placeholder("float", shape=(), name='gamma')
+        self.temp = tf.compat.v1.placeholder("float", shape=(), name='temperature')
+        self.noise = tf.compat.v1.placeholder("float", shape=(), name='noise_flag')
+        self.do_keep_prob = tf.compat.v1.placeholder("float", shape=(), name='do_keep_prob')
 
         # Create MGAIL blocks
         self.forward_model = ForwardModel(state_size=self.env.state_size,
@@ -84,8 +83,8 @@ class MGAIL(object):
         # 2.2 prediction
         d_cross_entropy = tf.nn.softmax_cross_entropy_with_logits(logits=d, labels=labels)
         # cost sensitive weighting (weight true=expert, predict=agent mistakes)
-        d_loss_weighted = self.env.cost_sensitive_weight * tf.multiply(tf.to_float(tf.equal(tf.squeeze(self.label), 1.)), d_cross_entropy) +\
-                                                           tf.multiply(tf.to_float(tf.equal(tf.squeeze(self.label), 0.)), d_cross_entropy)
+        d_loss_weighted = self.env.cost_sensitive_weight * tf.multiply(tf.compat.v1.to_float(tf.equal(tf.squeeze(self.label), 1.)), d_cross_entropy) +\
+                                                           tf.multiply(tf.compat.v1.to_float(tf.equal(tf.squeeze(self.label), 0.)), d_cross_entropy)
         discriminator_loss = tf.reduce_mean(d_loss_weighted)
         self.discriminator.train(objective=discriminator_loss)
 
@@ -97,7 +96,7 @@ class MGAIL(object):
             self.action_test = tf.squeeze(a + self.noise * eta)
         else:
             a = common.gumbel_softmax(logits=mu, temperature=self.temp)
-            self.action_test = tf.argmax(a, dimension=1)
+            self.action_test = tf.compat.v1.argmax(a, dimension=1)
 
         # 4.3 AL
         def policy_loop(state_, t, total_cost, total_trans_err, _):
@@ -120,7 +119,7 @@ class MGAIL(object):
             if self.env.continuous_actions:
                 a_sim = common.denormalize(action, self.er_expert.actions_mean, self.er_expert.actions_std)
             else:
-                a_sim = tf.argmax(action, dimension=1)
+                a_sim = tf.compat.v1.argmax(action, dimension=1)
 
             # get next state
             state_env, _, env_term_sig, = self.env.step(a_sim, mode='tensorflow')[:3]
