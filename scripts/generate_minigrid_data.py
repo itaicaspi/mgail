@@ -63,29 +63,38 @@ def main():
         ts = 0
 
         for _ in range(args.num_samples):
-            if args.render:
-                env.render()  # Render the environment to see what's going on (optional)
-
-            act = policy.get_action(obs)
-
-            if ts >= 50:
-                done = True # this forces us to have a terminal episode so it doesn't go on forever
+            obs = env.reset()  # The initial observation
+            policy.reset()
+            done = False
+            ts = 0
+            # print('episode: ', _)
             
-            # act[0] is the actual action, while the second tuple is the done variable. Inspiration: 
-            # https://github.com/lcswillems/rl-starter-files/blob/3c7289765883ca681e586b51acf99df1351f8ead/utils/agent.py#L47
-            append_data(buffer_data, obs['image'], act[0], _, done, _, env.agent_dir)
-            new_obs, rew, done, _ = env.step(act[0]) # why [0] ?
-            ts += 1
+            for _ in range(max_steps):
+                if args.render:
+                    env.render()  # Render the environment to see what's going on (optional)
 
-            if done: 
-                # reset target here!
-                obs = env.reset()
-                done = False
-                ts = 0
+                act = policy.get_action(obs)
 
-            else:
-                # continue by setting current obs
-                obs = new_obs
+                # if ts >= :
+                #     done = True # this forces us to have a terminal episode so it doesn't go on forever
+                
+                # act[0] is the actual action, while the second tuple is the done variable. Inspiration: 
+                # https://github.com/lcswillems/rl-starter-files/blob/3c7289765883ca681e586b51acf99df1351f8ead/utils/agent.py#L47
+                # print('shape of action:', act[0], 'dim 1', act[1])
+                append_data(buffer_data, obs['image'], act[0], _, done, _, env.agent_dir)
+                new_obs, rew, done, _ = env.step(act[0]) # why [0] ?
+                ts += 1
+
+                if done: 
+                    # reset target here!
+                    # obs = env.reset()
+                    # done = False
+                    # ts = 0
+                    break
+
+                else:
+                    # continue by setting current obs
+                    obs = new_obs
 
         fname = 'minigrid4rooms_generated.hdf5' 
         dataset = h5py.File(fname, 'w')
