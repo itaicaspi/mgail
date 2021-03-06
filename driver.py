@@ -14,6 +14,8 @@ class Driver(object):
         self.init_graph = tf.compat.v1.global_variables_initializer()
         self.saver = tf.compat.v1.train.Saver()
         self.sess = tf.compat.v1.Session()
+        # added summary writer to record losses
+        self.writer = tf.summary.create_file_writer('./graphs')
         if self.env.trained_model:
             self.saver.restore(self.sess, self.env.trained_model)
         else:
@@ -37,6 +39,10 @@ class Driver(object):
         v = {'forward_model': 0, 'discriminator': 1, 'policy': 2}
         module_ind = v[module]
         if attr == 'loss':
+            # trying to save 
+            if module == 'forward_model':
+                with self.writer.as_default():
+                    tf.summary.scalar("forward loss", value, self.itr)
             self.loss[module_ind] = self.run_avg * self.loss[module_ind] + (1 - self.run_avg) * np.asarray(value)
         elif attr == 'accuracy':
             self.disc_acc = self.run_avg * self.disc_acc + (1 - self.run_avg) * np.asarray(value)

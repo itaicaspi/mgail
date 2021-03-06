@@ -34,7 +34,7 @@ def dispatcher(env):
                 driver.save_model(dir_name=env.config_dir)
 
         driver.itr += 1
-
+    driver.writer.flush()
 
 if __name__ == '__main__':
     # load environment
