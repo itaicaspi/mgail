@@ -39,7 +39,7 @@ class Driver(object):
         v = {'forward_model': 0, 'discriminator': 1, 'policy': 2}
         module_ind = v[module]
         if attr == 'loss':
-            # trying to save 
+            # trying to save forward model loss (did this first because it's trained during prep)
             if module == 'forward_model':
                 with self.writer.as_default():
                     tf.summary.scalar("forward loss", value, self.itr)

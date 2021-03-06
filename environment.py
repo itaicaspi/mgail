@@ -56,7 +56,7 @@ class Environment(object):
         self.gym.render()
 
     def _connect(self):
-        self.action_size = 3
+        self.action_size = 7
         self.action_space = np.asarray([None] * self.action_size)
         self.state_size = 7 * 7 * 3
         self.qpos_size = self.gym.agent_pos.shape
