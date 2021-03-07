@@ -14,14 +14,16 @@ class Driver(object):
         self.init_graph = tf.compat.v1.global_variables_initializer()
         self.saver = tf.compat.v1.train.Saver()
         self.sess = tf.compat.v1.Session()
-        # added summary writer to record losses
-        self.writer = tf.summary.create_file_writer('./graphs')
         if self.env.trained_model:
             self.saver.restore(self.sess, self.env.trained_model)
         else:
             self.sess.run(self.init_graph)
         self.run_dir = self.env.run_dir
         self.loss = 999. * np.ones(3)
+        self.policy_losses = []
+        self.forward_losses = []
+        self.disc_losses = []
+        self.disc_acc = []
         self.reward_mean = 0
         self.reward_std = 0
         self.run_avg = 0.001
@@ -39,13 +41,19 @@ class Driver(object):
         v = {'forward_model': 0, 'discriminator': 1, 'policy': 2}
         module_ind = v[module]
         if attr == 'loss':
-            # trying to save forward model loss (did this first because it's trained during prep)
+            avg_loss = self.run_avg * self.loss[module_ind] + (1 - self.run_avg) * np.asarray(value)
+            self.loss[module_ind] = avg_loss
+            if module == 'policy':
+                self.policy_losses.append(avg_loss)
+            if module == 'discriminator':
+                self.disc_losses.append(avg_loss)
             if module == 'forward_model':
-                with self.writer.as_default():
-                    tf.summary.scalar("forward loss", value, self.itr)
-            self.loss[module_ind] = self.run_avg * self.loss[module_ind] + (1 - self.run_avg) * np.asarray(value)
+                self.forward_losses.append(avg_loss)
+
         elif attr == 'accuracy':
             self.disc_acc = self.run_avg * self.disc_acc + (1 - self.run_avg) * np.asarray(value)
+            # if module == 'discriminator':
+            #     self.disc_losses.append(avg_loss)
 
     def train_forward_model(self):
         alg = self.algorithm

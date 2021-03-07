@@ -3,6 +3,13 @@ import os
 from environment import Environment
 from driver import Driver
 import gym_minigrid
+import matplotlib.pyplot as plt
+
+def plotLoss(losses):
+    plt.figure()
+    plt.plot(losses)
+    plt.xlabel('Epochs')
+    plt.ylabel('Loss')
 
 def dispatcher(env):
 
@@ -34,7 +41,14 @@ def dispatcher(env):
                 driver.save_model(dir_name=env.config_dir)
 
         driver.itr += 1
-    driver.writer.flush()
+
+    plotLoss(driver.policy_losses)
+    plt.title("Policy Loss")
+    plotLoss(driver.disc_losses)
+    plt.title("Discriminator Loss")
+    plotLoss(driver.forward_losses)
+    plt.title("Forward Model Loss")
+    plt.show()
 
 if __name__ == '__main__':
     # load environment

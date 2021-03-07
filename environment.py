@@ -66,7 +66,7 @@ class Environment(object):
         self.trained_model = None
         self.train_mode = True
         self.expert_data = 'expert_trajectories/minigrid4rooms_generated.hdf5'
-        self.n_train_iters = 1100
+        self.n_train_iters = 10000
         self.n_episodes_test = 1
         self.test_interval = 1000
         self.n_steps_test = 18 * 2 * 2
