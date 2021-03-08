@@ -18,9 +18,9 @@ class Environment(object):
         result = self.gym.step(action)
         self.state, self.reward, self.done, self.info = result[:4]
         if self.random_initialization:
-            return np.float32(self.state['image']).reshape(1,-1), np.float32(self.reward), self.done
+            return np.float32(self.state['image'][:,:,0:2]).reshape(1,-1), np.float32(self.reward), self.done
         else:
-            return np.float32(self.state['image']).reshape(1,-1), np.float32(self.reward), self.done
+            return np.float32(self.state['image'][:,:,0:2]).reshape(1,-1), np.float32(self.reward), self.done
 
     def step(self, action, mode):
         if mode == 'tensorflow':
@@ -56,20 +56,20 @@ class Environment(object):
         self.gym.render()
 
     def _connect(self):
-        self.action_size = 7
+        self.action_size = 3
         self.action_space = np.asarray([None] * self.action_size)
-        self.state_size = 7 * 7 * 3
+        self.state_size = 7 * 7 * 2
         self.qpos_size = self.gym.agent_pos.shape
         self.qvel_size = 1
 
     def _train_params(self):
         self.trained_model = None
         self.train_mode = True
-        self.expert_data = 'expert_trajectories/minigrid4rooms_generated.hdf5'
+        self.expert_data = 'expert_trajectories/minigrid4rooms_generated_115.hdf5'
         self.n_train_iters = 10000
         self.n_episodes_test = 1
         self.test_interval = 1000
-        self.n_steps_test = 18 * 2 * 2
+        self.n_steps_test = 1500
         self.vis_flag = False
         self.save_models = True
         self.config_dir = None

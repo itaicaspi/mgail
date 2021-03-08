@@ -91,10 +91,10 @@ class Driver(object):
         # Adversarial Learning
         if self.env.get_status():
             state = self.env.reset()
-            state = state['image'].flatten()
+            state = state['image'][:,:,0:2].flatten()
         else:
             state = self.env.get_state()
-            state = state['image'].flatten()
+            state = state['image'][:,:,0:2].flatten()
 
         # Accumulate the (noisy) adversarial gradient
         for i in range(self.env.policy_accum_steps):
@@ -114,7 +114,7 @@ class Driver(object):
         # environment initialization point
         if start_at_zero:
             observation = self.env.reset()
-            observation = observation['image']
+            observation = observation['image'][:,:,0:2]
         else:
             states, actions, rewards, posstates, terminals = alg.er_expert.sample()
             observation = states[0]
