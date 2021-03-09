@@ -6,7 +6,7 @@ import gym
 class Environment(object):
     def __init__(self, run_dir, env_name):
         self.name = env_name
-        self.gym = gym.make(self.name)
+        self.gym = gym.make(self.name)        
         self.random_initialization = True
         self._connect()
         self._train_params()
@@ -17,10 +17,14 @@ class Environment(object):
         self.t += 1
         result = self.gym.step(action)
         self.state, self.reward, self.done, self.info = result[:4]
-        if self.random_initialization:
-            return np.float32(self.state['image']).reshape(1,-1), np.float32(self.reward), self.done
-        else:
-            return np.float32(self.state['image']).reshape(1,-1), np.float32(self.reward), self.done
+        # modify the state to include agent position and orientation
+        state = self.state['image'][:,:, :2]
+        state = np.reshape(state, [1, -1])
+        pos = np.reshape(self.gym.agent_pos, [1, -1])
+        ori = np.reshape(self.gym.agent_dir, [1, -1])
+        self.state = np.column_stack((state, pos, ori))
+        # end modifying the state vector and return it
+        return np.float32(self.state), np.float32(self.reward), self.done
 
     def step(self, action, mode):
         if mode == 'tensorflow':
@@ -30,7 +34,7 @@ class Environment(object):
                 state, reward, done = tf.compat.v1.py_func(self._step, inp=[action],
                                                  Tout=[tf.float32, tf.float32, tf.bool],
                                                  name='env_step_func')
-
+            
             state = tf.reshape(state, shape=(self.state_size,))
             done.set_shape(())
         else:
@@ -44,6 +48,13 @@ class Environment(object):
     def reset(self):
         self.t = 0
         self.state = self.gym.reset()
+        
+        # modify the state vector to include (7 * 7 * 2) + 3 for its feature vector
+        state = self.state['image'][:,:, :2]
+        state = np.reshape(state, [1, -1])
+        pos = np.reshape(self.gym.agent_pos, [1, -1])
+        ori = np.reshape(self.gym.agent_dir, [1, -1])
+        self.state = np.column_stack((state, pos, ori))
         return self.state
 
     def get_status(self):
@@ -56,16 +67,16 @@ class Environment(object):
         self.gym.render()
 
     def _connect(self):
-        self.action_size = 7
+        self.action_size = 3
         self.action_space = np.asarray([None] * self.action_size)
-        self.state_size = 7 * 7 * 3
+        self.state_size = 7 * 7 * 2 + 3 # adding pos (x,y) and orientation 
         self.qpos_size = self.gym.agent_pos.shape
         self.qvel_size = 1
 
     def _train_params(self):
         self.trained_model = None
         self.train_mode = True
-        self.expert_data = 'expert_trajectories/minigrid4rooms_generated.hdf5'
+        self.expert_data = 'expert_trajectories/minigrid4rooms_generated_115_augmented.hdf5'
         self.n_train_iters = 10000
         self.n_episodes_test = 1
         self.test_interval = 100

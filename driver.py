@@ -77,16 +77,14 @@ class Driver(object):
         # Adversarial Learning
         if self.env.get_status():
             state = self.env.reset()
-            state = state['image'].flatten()
         else:
             state = self.env.get_state()
-            state = state['image'].flatten()
 
         # Accumulate the (noisy) adversarial gradient
         for i in range(self.env.policy_accum_steps):
             # accumulate AL gradient
             fetches = [alg.policy.accum_grads_al, alg.policy.loss_al]
-            feed_dict = {alg.states: np.array([state]), alg.gamma: self.env.gamma,
+            feed_dict = {alg.states: np.array(state), alg.gamma: self.env.gamma,
                          alg.do_keep_prob: self.env.do_keep_prob, alg.noise: 1., alg.temp: self.env.temp}
             run_vals = self.sess.run(fetches, feed_dict)
             self.update_stats('policy', 'loss', run_vals[1])
@@ -100,11 +98,11 @@ class Driver(object):
         # environment initialization point
         if start_at_zero:
             observation = self.env.reset()
-            observation = observation['image']
+
         else:
             states, actions, rewards, posstates, terminals = alg.er_expert.sample()
             observation = states[0]
-
+        
         do_keep_prob = self.env.do_keep_prob
         t = 0
         R = 0
@@ -118,7 +116,7 @@ class Driver(object):
 
             if not noise_flag:
                 do_keep_prob = 1.
-
+            
             a = self.sess.run(fetches=[alg.action_test], feed_dict={alg.states: np.reshape(observation, [1, -1]),
                                                                     alg.do_keep_prob: do_keep_prob,
                                                                     alg.noise: noise_flag,

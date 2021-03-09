@@ -11,7 +11,9 @@ import argparse
 
 MODEL_PATH = "data/local/experiment/trpo_minigrid_115/"
 
-# MAIN IDEA: https://github.com/rlworkgroup/garage/blob/c43eaf7647f7feb467847cb8bc107301a7c31938/docs/user/reuse_garage_policy.md
+# MAIN IDEAS: 
+# 1. https://github.com/rlworkgroup/garage/blob/c43eaf7647f7feb467847cb8bc107301a7c31938/docs/user/reuse_garage_policy.md
+# 2. https://github.com/rail-berkeley/d4rl/blob/master/scripts/generation/generate_minigrid_fourroom_data.py
 
 def reset_data():
     return {'observations': [],
@@ -38,6 +40,7 @@ def npify(data):
             dtype = np.bool_
         else:
             dtype = np.float32
+    
         data[k] = np.array(data[k], dtype=dtype)
 
 def main():
@@ -83,8 +86,7 @@ def main():
                 # act[0] is the actual action, while the second tuple is the done variable. Inspiration: 
                 # https://github.com/lcswillems/rl-starter-files/blob/3c7289765883ca681e586b51acf99df1351f8ead/utils/agent.py#L47
                 # print('shape of action:', act[0], 'dim 1', act[1])
-                # print('obs: ', obs['image'])
-                append_data(buffer_data, obs, act[0], _, done, _, env.agent_dir, rew) # obs is flattened from 7*7*2
+                append_data(buffer_data, obs, act[0], _, done, env.agent_pos, env.agent_dir, rew) # obs is flattened from 7*7*2
                 new_obs, rew, done, _ = env.step(act[0]) # why [0] ?
                 ts += 1
 
@@ -96,7 +98,7 @@ def main():
                     # continue by setting current obs
                     obs = new_obs
 
-        fname = 'minigrid4rooms_generated_115.hdf5'
+        fname = 'minigrid4rooms_generated_115_augmented.hdf5'
         dataset = h5py.File(fname, 'w')
         npify(buffer_data)
         for key in buffer_data:
