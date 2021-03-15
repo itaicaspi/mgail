@@ -80,8 +80,8 @@ class Environment(object):
         self.n_train_iters = 10000
         self.n_episodes_test = 1
         self.test_interval = 100
-        self.n_steps_test = 500
-        self.vis_flag = True
+        self.n_steps_test = 500 # WE NEED TO CHANGE THIS DURING AL 
+        self.vis_flag = False
         self.save_models = True
         self.config_dir = None
         self.continuous_actions = False
@@ -90,10 +90,10 @@ class Environment(object):
         self.er_agent_size = 1000
         self.prep_time = 1000
         self.collect_experience_interval = 15
-        self.n_steps_train = 10
+        self.n_steps_train = 10 # WE NEED TO CHANGE THIS DURING AL
         self.discr_policy_itrvl = 100
         self.gamma = 0.99
-        self.batch_size = 70
+        self.batch_size = 4000 # 70
         self.weight_decay = 1e-7
         self.policy_al_w = 1e-2
         self.policy_tr_w = 1e-4

@@ -123,8 +123,7 @@ class Driver(object):
                                                                     alg.temp: self.env.temp})
 
             observation, reward, done, info = self.env.step(a, mode='python')
-
-            done = done or t > n_steps
+            # done = done or t > n_steps
             t += 1
             R += reward
 

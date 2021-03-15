@@ -20,6 +20,8 @@ def dispatcher(env):
             # measure performance
             R = []
             for n in range(env.n_episodes_test):
+                if driver.itr == env.n_train_iters-1:
+                    R.append(driver.collect_experience(record=True, vis=True, noise_flag=False, n_steps=1000))
                 R.append(driver.collect_experience(record=True, vis=env.vis_flag, noise_flag=False, n_steps=1000))
 
             # update stats

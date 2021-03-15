@@ -70,7 +70,7 @@ def load_d4rl_er(h5path, batch_size, history_length, traj_length):
     flattened_post_states += terminal_post_states
     state_dim = flattened_states.shape[-1]
     er = ER(data_size, state_dim, int(max(data_dict["actions"] + 1)), batch_size, history_length)
-    er.add(data_dict["actions"], data_dict["rewards"], flattened_post_states, terminals)
+    er.add(data_dict["actions"], data_dict["rewards"], flattened_states, terminals)
     er = set_er_stats(er, history_length, traj_length)
     return er
 
