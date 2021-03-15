@@ -6,7 +6,7 @@ import gym
 class Environment(object):
     def __init__(self, run_dir, env_name):
         self.name = env_name
-        self.gym = gym.make(self.name)        
+        self.gym = gym.make(self.name)    
         self.random_initialization = True
         self._connect()
         self._train_params()
