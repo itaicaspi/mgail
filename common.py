@@ -43,13 +43,6 @@ def load_d4rl_er(h5path, batch_size, history_length, traj_length):
     data_dict = get_d4rl_dataset(h5path)
     data_size = data_dict["rewards"].shape[0]
     flattened_states = data_dict["observations"].reshape(data_size, -1)
-    # position is of shape (samples, 2), orientation is of shape (samples, 1)
-    flattened_poss = data_dict['infos/pos'].reshape(data_size, -1)
-    flattened_ori = data_dict['infos/orientation'].reshape(data_size, -1)
-
-    # this shouldn't affect the post-state rollback
-    flattened_states = np.column_stack((flattened_states, flattened_poss, flattened_ori))
-
     flattened_post_states = np.roll(flattened_states, -1, axis=0)
     flattened_post_states[-1] = flattened_post_states[-2] # the last post-state uses the pre-state
     terminals = data_dict["terminals"]
@@ -69,7 +62,7 @@ def load_d4rl_er(h5path, batch_size, history_length, traj_length):
     # add back the terminal states
     flattened_post_states += terminal_post_states
     state_dim = flattened_states.shape[-1]
-    er = ER(data_size, state_dim, int(max(data_dict["actions"] + 1)), batch_size, history_length)
+    er = ER(data_size, state_dim, np.shape(data_dict['actions'])[1], batch_size, history_length)
     er.add(data_dict["actions"], data_dict["rewards"], flattened_states, terminals)
     er = set_er_stats(er, history_length, traj_length)
     return er

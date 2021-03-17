@@ -100,8 +100,10 @@ class Driver(object):
             observation = self.env.reset()
 
         else:
+            print('NOT STARTING AT 0!!!')
             states, actions, rewards, posstates, terminals = alg.er_expert.sample()
             observation = states[0]
+            print('OBSERVATION: ', observation)
         
         do_keep_prob = self.env.do_keep_prob
         t = 0
@@ -122,6 +124,7 @@ class Driver(object):
                                                                     alg.noise: noise_flag,
                                                                     alg.temp: self.env.temp})
 
+            print('SAMPLED A: ', a)
             observation, reward, done, info = self.env.step(a, mode='python')
             # done = done or t > n_steps
             t += 1
@@ -153,6 +156,7 @@ class Driver(object):
 
         # Adversarial Learning
         else:
+            print('DOING AL!!')
             self.train_forward_model()
 
             self.mode = 'Prep'

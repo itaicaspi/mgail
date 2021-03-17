@@ -6,7 +6,7 @@ import gym
 class Environment(object):
     def __init__(self, run_dir, env_name):
         self.name = env_name
-        self.gym = gym.make(self.name)    
+        self.gym = gym.make(self.name)
         self.random_initialization = True
         self._connect()
         self._train_params()
@@ -15,15 +15,7 @@ class Environment(object):
     def _step(self, action):
         action = np.squeeze(action)
         self.t += 1
-        result = self.gym.step(action)
-        self.state, self.reward, self.done, self.info = result[:4]
-        # modify the state to include agent position and orientation
-        state = self.state['image'][:,:, :2]
-        state = np.reshape(state, [1, -1])
-        pos = np.reshape(self.gym.agent_pos, [1, -1])
-        ori = np.reshape(self.gym.agent_dir, [1, -1])
-        self.state = np.column_stack((state, pos, ori))
-        # end modifying the state vector and return it
+        self.state, self.reward, self.done, self.info = self.gym.step(action)
         return np.float32(self.state), np.float32(self.reward), self.done
 
     def step(self, action, mode):
@@ -48,13 +40,6 @@ class Environment(object):
     def reset(self):
         self.t = 0
         self.state = self.gym.reset()
-        
-        # modify the state vector to include (7 * 7 * 2) + 3 for its feature vector
-        state = self.state['image'][:,:, :2]
-        state = np.reshape(state, [1, -1])
-        pos = np.reshape(self.gym.agent_pos, [1, -1])
-        ori = np.reshape(self.gym.agent_dir, [1, -1])
-        self.state = np.column_stack((state, pos, ori))
         return self.state
 
     def get_status(self):
@@ -67,30 +52,30 @@ class Environment(object):
         self.gym.render()
 
     def _connect(self):
-        self.action_size = 3
+        self.action_size = self.gym.action_space.shape[0]
         self.action_space = np.asarray([None] * self.action_size)
-        self.state_size = 7 * 7 * 2 + 3 # adding pos (x,y) and orientation 
-        self.qpos_size = self.gym.agent_pos.shape
-        self.qvel_size = 1
+        self.state_size = self.gym.observation_space.shape[0]
+        self.qpos_size = 5
+        self.qvel_size = 6
 
     def _train_params(self):
         self.trained_model = None
         self.train_mode = True
-        self.expert_data = 'expert_trajectories/minigrid4rooms_generated_115_augmented.hdf5'
+        self.expert_data = 'expert_trajectories/minigrid4rooms_generated_hopper.hdf5'
         self.n_train_iters = 10000
         self.n_episodes_test = 1
         self.test_interval = 100
-        self.n_steps_test = 500 # WE NEED TO CHANGE THIS DURING AL 
+        self.n_steps_test = 500
         self.vis_flag = False
         self.save_models = True
         self.config_dir = None
-        self.continuous_actions = False
+        self.continuous_actions = True
 
         # Main parameters to play with:
         self.er_agent_size = 1000
         self.prep_time = 1000
         self.collect_experience_interval = 15
-        self.n_steps_train = 10 # WE NEED TO CHANGE THIS DURING AL
+        self.n_steps_train = 10
         self.discr_policy_itrvl = 100
         self.gamma = 0.99
         self.batch_size = 4000 # 70
