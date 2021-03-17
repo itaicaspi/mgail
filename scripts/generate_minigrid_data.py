@@ -100,7 +100,7 @@ def main():
                     # continue by setting current obs
                     obs = new_obs
 
-        fname = 'minigrid4rooms_generated_hopper.hdf5'
+        fname = 'generated_hopper.hdf5'
         dataset = h5py.File(fname, 'w')
         npify(buffer_data)
         for key in buffer_data:
