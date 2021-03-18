@@ -84,7 +84,7 @@ class Driver(object):
         for i in range(self.env.policy_accum_steps):
             # accumulate AL gradient
             fetches = [alg.policy.accum_grads_al, alg.policy.loss_al]
-            feed_dict = {alg.states: np.array(state), alg.gamma: self.env.gamma,
+            feed_dict = {alg.states: np.array([state]), alg.gamma: self.env.gamma,
                          alg.do_keep_prob: self.env.do_keep_prob, alg.noise: 1., alg.temp: self.env.temp}
             run_vals = self.sess.run(fetches, feed_dict)
             self.update_stats('policy', 'loss', run_vals[1])
@@ -100,10 +100,8 @@ class Driver(object):
             observation = self.env.reset()
 
         else:
-            print('NOT STARTING AT 0!!!')
             states, actions, rewards, posstates, terminals = alg.er_expert.sample()
             observation = states[0]
-            print('OBSERVATION: ', observation)
         
         do_keep_prob = self.env.do_keep_prob
         t = 0
@@ -124,7 +122,6 @@ class Driver(object):
                                                                     alg.noise: noise_flag,
                                                                     alg.temp: self.env.temp})
 
-            print('SAMPLED A: ', a)
             observation, reward, done, info = self.env.step(a, mode='python')
             # done = done or t > n_steps
             t += 1
@@ -156,7 +153,6 @@ class Driver(object):
 
         # Adversarial Learning
         else:
-            print('DOING AL!!')
             self.train_forward_model()
 
             self.mode = 'Prep'

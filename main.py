@@ -8,6 +8,8 @@ import pybulletgym
 def dispatcher(env):
 
     driver = Driver(env)
+    if env.vis_flag:
+        env.render()
 
     while driver.itr < env.n_train_iters:
 
@@ -21,7 +23,7 @@ def dispatcher(env):
             # measure performance
             R = []
             for n in range(env.n_episodes_test):
-                R.append(driver.collect_experience(record=True, vis=env.vis_flag, noise_flag=False, n_steps=1000))
+                R.append(driver.collect_experience(record=True, vis=env.vis_flag, noise_flag=True, n_steps=1000))
 
             # update stats
             driver.reward_mean = sum(R) / len(R)
@@ -35,7 +37,6 @@ def dispatcher(env):
                 driver.save_model(dir_name=env.config_dir)
 
         driver.itr += 1
-
 
 if __name__ == '__main__':
     # load environment

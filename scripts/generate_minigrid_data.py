@@ -40,7 +40,6 @@ def npify(data):
             dtype = np.bool_
         else:
             dtype = np.float32
-    
         data[k] = np.array(data[k], dtype=dtype)
 
 def main():
@@ -94,6 +93,8 @@ def main():
 
                 if done: 
                     # reset target here!
+                    random_act = env.action_space.sample()
+                    append_data(buffer_data, new_obs, random_act, 0, done, 0, 0, rew)
                     break
 
                 else:
