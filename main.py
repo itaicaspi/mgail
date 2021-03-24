@@ -37,7 +37,7 @@ def dispatcher(env):
             # measure performance
             R = []
             for n in range(env.n_episodes_test):
-                R.append(driver.collect_experience(record=True, vis=env.vis_flag, noise_flag=True, n_steps=1000))
+                R.append(driver.collect_experience(record=True, vis=env.vis_flag, noise_flag=False, n_steps=1000))
 
             # update stats
             driver.reward_mean = sum(R) / len(R)
@@ -65,7 +65,7 @@ def dispatcher(env):
 
 if __name__ == '__main__':
     # load environment
-    env = Environment(os.path.curdir, 'HopperMuJoCoEnv-v0')
+    env = Environment(os.path.curdir, 'AntPyBulletEnv-v0')
 
     # start training
     dispatcher(env=env)
