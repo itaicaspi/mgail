@@ -20,6 +20,10 @@ class Driver(object):
             self.sess.run(self.init_graph)
         self.run_dir = self.env.run_dir
         self.loss = 999. * np.ones(3)
+        self.policy_losses = []
+        self.forward_losses = []
+        self.disc_losses = []
+        self.disc_acc = []
         self.reward_mean = 0
         self.reward_std = 0
         self.run_avg = 0.001
@@ -37,9 +41,19 @@ class Driver(object):
         v = {'forward_model': 0, 'discriminator': 1, 'policy': 2}
         module_ind = v[module]
         if attr == 'loss':
-            self.loss[module_ind] = self.run_avg * self.loss[module_ind] + (1 - self.run_avg) * np.asarray(value)
+            avg_loss = self.run_avg * self.loss[module_ind] + (1 - self.run_avg) * np.asarray(value)
+            self.loss[module_ind] = avg_loss
+            if module == 'policy':
+                self.policy_losses.append(avg_loss)
+            if module == 'discriminator':
+                self.disc_losses.append(avg_loss)
+            if module == 'forward_model':
+                self.forward_losses.append(avg_loss)
+
         elif attr == 'accuracy':
             self.disc_acc = self.run_avg * self.disc_acc + (1 - self.run_avg) * np.asarray(value)
+            # if module == 'discriminator':
+            #     self.disc_losses.append(avg_loss)
 
     def train_forward_model(self):
         alg = self.algorithm
@@ -77,10 +91,8 @@ class Driver(object):
         # Adversarial Learning
         if self.env.get_status():
             state = self.env.reset()
-            state = state['image'].flatten()
         else:
             state = self.env.get_state()
-            state = state['image'].flatten()
 
         # Accumulate the (noisy) adversarial gradient
         for i in range(self.env.policy_accum_steps):
@@ -100,11 +112,11 @@ class Driver(object):
         # environment initialization point
         if start_at_zero:
             observation = self.env.reset()
-            observation = observation['image']
+
         else:
             states, actions, rewards, posstates, terminals = alg.er_expert.sample()
             observation = states[0]
-
+        
         do_keep_prob = self.env.do_keep_prob
         t = 0
         R = 0
@@ -118,15 +130,14 @@ class Driver(object):
 
             if not noise_flag:
                 do_keep_prob = 1.
-
+            
             a = self.sess.run(fetches=[alg.action_test], feed_dict={alg.states: np.reshape(observation, [1, -1]),
                                                                     alg.do_keep_prob: do_keep_prob,
                                                                     alg.noise: noise_flag,
                                                                     alg.temp: self.env.temp})
 
             observation, reward, done, info = self.env.step(a, mode='python')
-
-            done = done or t > n_steps
+            # done = done or t > n_steps
             t += 1
             R += reward
 

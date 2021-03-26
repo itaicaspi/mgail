@@ -1,7 +1,9 @@
 from garage.experiment import Snapshotter
 import tensorflow as tf
+import pybulletgym
+import numpy as np
 
-MODEL_PATH = "data/local/experiment/trpo_minigrid/"
+MODEL_PATH = "data/local/experiment/trpo_minigrid_13/"
 
 def main():
     snapshotter = Snapshotter()
@@ -14,9 +16,9 @@ def main():
 
         steps, max_steps = 0, 1500
         done = False
+        env.render()
         obs = env.reset()  # The initial observation
         policy.reset()
-
 
         while steps < max_steps and not done:
             action = policy.get_action(obs)[0]

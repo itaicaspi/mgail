@@ -15,12 +15,8 @@ class Environment(object):
     def _step(self, action):
         action = np.squeeze(action)
         self.t += 1
-        result = self.gym.step(action)
-        self.state, self.reward, self.done, self.info = result[:4]
-        if self.random_initialization:
-            return np.float32(self.state['image']).reshape(1,-1), np.float32(self.reward), self.done
-        else:
-            return np.float32(self.state['image']).reshape(1,-1), np.float32(self.reward), self.done
+        self.state, self.reward, self.done, self.info = self.gym.step(action)
+        return np.float32(self.state), np.float32(self.reward), self.done
 
     def step(self, action, mode):
         if mode == 'tensorflow':
@@ -30,7 +26,7 @@ class Environment(object):
                 state, reward, done = tf.compat.v1.py_func(self._step, inp=[action],
                                                  Tout=[tf.float32, tf.float32, tf.bool],
                                                  name='env_step_func')
-
+            
             state = tf.reshape(state, shape=(self.state_size,))
             done.set_shape(())
         else:
@@ -56,24 +52,24 @@ class Environment(object):
         self.gym.render()
 
     def _connect(self):
-        self.action_size = 7
+        self.action_size = self.gym.action_space.shape[0]
         self.action_space = np.asarray([None] * self.action_size)
-        self.state_size = 7 * 7 * 3
-        self.qpos_size = self.gym.agent_pos.shape
-        self.qvel_size = 1
+        self.state_size = self.gym.observation_space.shape[0]
+        self.qpos_size = 5
+        self.qvel_size = 6
 
     def _train_params(self):
         self.trained_model = None
         self.train_mode = True
-        self.expert_data = 'expert_trajectories/minigrid4rooms_generated.hdf5'
+        self.expert_data = 'expert_trajectories/generated_antbullet.hdf5'
         self.n_train_iters = 10000
         self.n_episodes_test = 1
         self.test_interval = 100
         self.n_steps_test = 500
-        self.vis_flag = True
+        self.vis_flag = False
         self.save_models = True
         self.config_dir = None
-        self.continuous_actions = False
+        self.continuous_actions = True
 
         # Main parameters to play with:
         self.er_agent_size = 1000

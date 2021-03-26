@@ -46,7 +46,7 @@ def load_d4rl_er(h5path, batch_size, history_length, traj_length):
     flattened_post_states = np.roll(flattened_states, -1, axis=0)
     flattened_post_states[-1] = flattened_post_states[-2] # the last post-state uses the pre-state
     terminals = data_dict["terminals"]
-    inverted_terminals= np.invert(terminals)
+    inverted_terminals = np.invert(terminals)
     # masked out other states, only keep terminal states
     terminal_post_states = np.ma.masked_array(
         flattened_states,
@@ -62,7 +62,7 @@ def load_d4rl_er(h5path, batch_size, history_length, traj_length):
     # add back the terminal states
     flattened_post_states += terminal_post_states
     state_dim = flattened_states.shape[-1]
-    er = ER(data_size, state_dim, int(max(data_dict["actions"] + 1)), batch_size, history_length)
+    er = ER(data_size, state_dim, np.shape(data_dict['actions'])[1], batch_size, history_length)
     er.add(data_dict["actions"], data_dict["rewards"], flattened_post_states, terminals)
     er = set_er_stats(er, history_length, traj_length)
     return er

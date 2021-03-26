@@ -92,7 +92,7 @@ class MGAIL(object):
         mu = self.policy.forward(states)
         if self.env.continuous_actions:
             a = common.denormalize(mu, self.er_expert.actions_mean, self.er_expert.actions_std)
-            eta = tf.random_normal(shape=tf.shape(a), stddev=self.env.sigma)
+            eta = tf.random.normal(shape=tf.shape(a), stddev=self.env.sigma)
             self.action_test = tf.squeeze(a + self.noise * eta)
         else:
             a = common.gumbel_softmax(logits=mu, temperature=self.temp)
@@ -103,7 +103,7 @@ class MGAIL(object):
             mu = self.policy.forward(state_, reuse=True)
 
             if self.env.continuous_actions:
-                eta = self.env.sigma * tf.random_normal(shape=tf.shape(mu))
+                eta = self.env.sigma * tf.random.normal(shape=tf.shape(mu))
                 action = mu + eta
             else:
                 action = common.gumbel_softmax_sample(logits=mu, temperature=self.temp)
