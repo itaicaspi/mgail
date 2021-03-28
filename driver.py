@@ -67,11 +67,11 @@ class Driver(object):
     def train_discriminator(self):
         alg = self.algorithm
         # get states and actions
-        state_a_, action_a, _, n_state_a_ = self.algorithm.er_agent.sample()[:4]
+        state_a_, action_a, _, n_state_a = self.algorithm.er_agent.sample()[:4]
         state_e_, action_e, _, n_state_e = self.algorithm.er_expert.sample()[:4]
         states = np.concatenate([state_a_, state_e_])
         actions = np.concatenate([action_a, action_e])
-        nstates = np.concatenate([n_state_a_, n_state_e])
+        nstates = np.concatenate([n_state_a, n_state_e])
         # labels (policy/expert) : 0/1, and in 1-hot form: policy-[1,0], expert-[0,1]
         labels_a = np.zeros(shape=(state_a_.shape[0],))
         labels_e = np.ones(shape=(state_e_.shape[0],))
