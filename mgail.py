@@ -25,7 +25,6 @@ class MGAIL(object):
         self.noise = tf.compat.v1.placeholder("float", shape=(), name='noise_flag')
         self.do_keep_prob = tf.compat.v1.placeholder("float", shape=(), name='do_keep_prob')
         self.lprobs = tf.compat.v1.placeholder('float', shape=(None, 1), name='log_probs')
-        self.nstates = tf.compat.v1.placeholder("float", shape=(None, self.env.state_size), name='states')
 
         # Create MGAIL blocks
         self.forward_model = ForwardModel(state_size=self.env.state_size,
@@ -99,7 +98,7 @@ class MGAIL(object):
             self.discrim_output, log_p_tau, log_q_tau, log_pq = self.discriminator.forward(states_, actions, states, lprobs)
 
 
-            correct_predictions = tf.equal(self.discrim_output, tf.argmax(labels, 1))
+            correct_predictions = tf.equal(tf.round(self.discrim_output), tf.argmax(labels, 1))
             self.discriminator.acc = tf.reduce_mean(tf.cast(correct_predictions, "float"))
 
             d_cross_entropy = labels*(log_p_tau-log_pq) + (1-labels)*(log_q_tau-log_pq)
@@ -118,7 +117,6 @@ class MGAIL(object):
             correct_predictions = tf.equal(tf.argmax(d, 1), tf.argmax(labels, 1))
             self.discriminator.acc = tf.reduce_mean(tf.cast(correct_predictions, "float"))
             # 2.2 prediction
-            # d_cross_entropy = tf.nn.softmax_cross_entropy_with_logits(logits=d, labels=labels)
             d_cross_entropy = tf.nn.softmax_cross_entropy_with_logits(logits=d, labels=labels)
             # cost sensitive weighting (weight true=expert, predict=agent mistakes)
             d_loss_weighted = self.env.cost_sensitive_weight * tf.multiply(tf.compat.v1.to_float(tf.equal(tf.squeeze(self.label), 1.)), d_cross_entropy) +\
