@@ -76,16 +76,17 @@ class Driver(object):
         labels_a = np.zeros(shape=(state_a_.shape[0],))
         labels_e = np.ones(shape=(state_e_.shape[0],))
         labels = np.expand_dims(np.concatenate([labels_a, labels_e]), axis=1)
-        lprobs_a = np.log(action_a) # placeholder -> modify this to extract er's action_probs
-        lprobs_e = np.log(action_e) # placeholder -> modify this to extract er's action_probs
-        lprobs = np.expand_dims(np.concatenate([lprobs_a, lprobs_e], axis=0), axis=1).astype(np.float32)
 
         fetches = [alg.discriminator.minimize, alg.discriminator.loss, alg.discriminator.acc]
         
-        if self.use_irl
-            feed_dict = {alg.states_: states, alg.actions: actions, alg.states: nstates
+        if self.use_irl:
+            lprobs_a = np.log(action_a) # placeholder -> modify this to extract er's action_probs
+            lprobs_e = np.log(action_e) # placeholder -> modify this to extract er's action_probs
+            lprobs = np.expand_dims(np.concatenate([lprobs_a, lprobs_e], axis=0), axis=1).astype(np.float32)
+            
+            feed_dict = {alg.states_: states, alg.actions: actions, alg.states: nstates,
                         alg.label: labels, alg.do_keep_prob: self.env.do_keep_prob,
-                        alg.lprobs=lprobs}
+                        alg.lprobs: lprobs}
         else:
             feed_dict = {alg.states: states, alg.actions: actions,
                         alg.label: labels, alg.do_keep_prob: self.env.do_keep_prob}

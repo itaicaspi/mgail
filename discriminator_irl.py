@@ -93,11 +93,3 @@ class DiscriminatorIRL(object):
     def train(self, objective):
         self.loss = objective
         self.minimize = self.backward(self.loss)
-
-    
-    def relu_net(x, layers=2, dout=1, d_hidden=32):
-    out = x
-    for i in range(layers):
-        out = relu_layer(out, dout=d_hidden, name='l%d'%i)
-    out = linear(out, dout=dout, name='lfinal')
-    return out

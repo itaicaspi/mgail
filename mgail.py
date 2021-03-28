@@ -102,7 +102,7 @@ class MGAIL(object):
             correct_predictions = tf.equal(self.discrim_output, tf.argmax(labels, 1))
             self.discriminator.acc = tf.reduce_mean(tf.cast(correct_predictions, "float"))
 
-            d_cross_entropy = (labels*(log_p_tau-log_pq) + (1-labels)*(log_q_tau-log_pq)
+            d_cross_entropy = labels*(log_p_tau-log_pq) + (1-labels)*(log_q_tau-log_pq)
 
             d_loss_weighted = self.env.cost_sensitive_weight * tf.multiply(tf.compat.v1.to_float(tf.equal(tf.squeeze(self.label), 1.)), d_cross_entropy) +\
                                                             tf.multiply(tf.compat.v1.to_float(tf.equal(tf.squeeze(self.label), 0.)), d_cross_entropy)
@@ -115,7 +115,7 @@ class MGAIL(object):
         else:
             d = self.discriminator.forward(states, actions)
             # 2.1 0-1 accuracy
-            correct_predictions = tf.equal(tf.argmax(d, 1),, tf.argmax(labels, 1))
+            correct_predictions = tf.equal(tf.argmax(d, 1), tf.argmax(labels, 1))
             self.discriminator.acc = tf.reduce_mean(tf.cast(correct_predictions, "float"))
             # 2.2 prediction
             # d_cross_entropy = tf.nn.softmax_cross_entropy_with_logits(logits=d, labels=labels)
@@ -199,7 +199,7 @@ class MGAIL(object):
         
         else: # USING IRL
             labels = tf.concat([1 - self.label, self.label], 1) # TODO: We need to fix this! 
-            d_cross_entropy = (labels*(log_p-log_pq) + (1-labels)*(log_q-log_pq)
+            d_cross_entropy = labels*(log_p-log_pq) + (1-labels)*(log_q-log_pq)
 
         loss = tf.reduce_mean(d_cross_entropy)
         return loss*self.env.policy_al_w
