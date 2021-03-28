@@ -198,8 +198,7 @@ class MGAIL(object):
             d_cross_entropy = tf.nn.softmax_cross_entropy_with_logits(logits=d, labels=labels)
         
         else: # USING IRL
-            labels = tf.concat([1 - self.label, self.label], 1) # TODO: We need to fix this! 
-            d_cross_entropy = labels*(log_p-log_pq) + (1-labels)*(log_q-log_pq)
+            d_cross_entropy = - (log_p - log_pq) + (log_q - log_pq)
 
         loss = tf.reduce_mean(d_cross_entropy)
         return loss*self.env.policy_al_w
