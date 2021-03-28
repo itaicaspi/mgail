@@ -18,9 +18,9 @@ def plotReward(rewards):
     plt.xlabel('Epochs')
     plt.ylabel('Avg Reward')
 
-def dispatcher(env):
+def dispatcher(env, use_irl):
 
-    driver = Driver(env)
+    driver = Driver(env, use_irl)
     avg_rewards = []
     if env.vis_flag:
         env.render()
@@ -66,6 +66,6 @@ def dispatcher(env):
 if __name__ == '__main__':
     # load environment
     env = Environment(os.path.curdir, 'AntPyBulletEnv-v0')
-
+    use_irl = False
     # start training
-    dispatcher(env=env)
+    dispatcher(env=env, use_irl=use_irl)

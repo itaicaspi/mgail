@@ -7,10 +7,10 @@ from mgail import MGAIL
 
 
 class Driver(object):
-    def __init__(self, environment):
-
+    def __init__(self, environment, use_irl=False):
+        self.use_irl = use_irl
         self.env = environment
-        self.algorithm = MGAIL(environment=self.env)
+        self.algorithm = MGAIL(environment=self.env, use_irl=use_irl)
         self.init_graph = tf.compat.v1.global_variables_initializer()
         self.saver = tf.compat.v1.train.Saver()
         self.sess = tf.compat.v1.Session()
@@ -67,17 +67,29 @@ class Driver(object):
     def train_discriminator(self):
         alg = self.algorithm
         # get states and actions
-        state_a_, action_a = self.algorithm.er_agent.sample()[:2]
-        state_e_, action_e = self.algorithm.er_expert.sample()[:2]
+        state_a_, action_a, _, n_state_a_ = self.algorithm.er_agent.sample()[:4]
+        state_e_, action_e, _, n_state_e = self.algorithm.er_expert.sample()[:4]
         states = np.concatenate([state_a_, state_e_])
         actions = np.concatenate([action_a, action_e])
+        nstates = np.concatenate([n_state_a_, n_state_e])
         # labels (policy/expert) : 0/1, and in 1-hot form: policy-[1,0], expert-[0,1]
         labels_a = np.zeros(shape=(state_a_.shape[0],))
         labels_e = np.ones(shape=(state_e_.shape[0],))
         labels = np.expand_dims(np.concatenate([labels_a, labels_e]), axis=1)
+        lprobs_a = np.log(action_a) # placeholder -> modify this to extract er's action_probs
+        lprobs_e = np.log(action_e) # placeholder -> modify this to extract er's action_probs
+        lprobs = np.expand_dims(np.concatenate([lprobs_a, lprobs_e], axis=0), axis=1).astype(np.float32)
+
         fetches = [alg.discriminator.minimize, alg.discriminator.loss, alg.discriminator.acc]
-        feed_dict = {alg.states: states, alg.actions: actions,
-                     alg.label: labels, alg.do_keep_prob: self.env.do_keep_prob}
+        
+        if self.use_irl
+            feed_dict = {alg.states_: states, alg.actions: actions, alg.states: nstates
+                        alg.label: labels, alg.do_keep_prob: self.env.do_keep_prob,
+                        alg.lprobs=lprobs}
+        else:
+            feed_dict = {alg.states: states, alg.actions: actions,
+                        alg.label: labels, alg.do_keep_prob: self.env.do_keep_prob}
+
         run_vals = self.sess.run(fetches, feed_dict)
         self.update_stats('discriminator', 'loss', run_vals[1])
         self.update_stats('discriminator', 'accuracy', run_vals[2])
