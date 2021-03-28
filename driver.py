@@ -67,8 +67,13 @@ class Driver(object):
     def train_discriminator(self):
         alg = self.algorithm
         # get states and actions
-        state_a_, action_a, _, n_state_a = self.algorithm.er_agent.sample()[:4]
-        state_e_, action_e, _, n_state_e = self.algorithm.er_expert.sample()[:4]
+        if self.use_irl:
+            state_a_, action_a, _, n_state_a, _, action_a_probs = self.algorithm.er_agent.sample()
+            state_e_, action_e, _, n_state_e, _, action_e_probs = self.algorithm.er_expert.sample()
+        else:
+            state_a_, action_a, _, n_state_a, = self.algorithm.er_agent.sample()[:4]
+            state_e_, action_e, _, n_state_e, = self.algorithm.er_expert.sample()[:4]
+
         states = np.concatenate([state_a_, state_e_])
         actions = np.concatenate([action_a, action_e])
         nstates = np.concatenate([n_state_a, n_state_e])
@@ -80,8 +85,8 @@ class Driver(object):
         fetches = [alg.discriminator.minimize, alg.discriminator.loss, alg.discriminator.acc]
         
         if self.use_irl:
-            lprobs_a = np.log(action_a) # placeholder -> modify this to extract er's action_probs
-            lprobs_e = np.log(action_e) # placeholder -> modify this to extract er's action_probs
+            lprobs_a = np.log(action_a_probs) # placeholder -> modify this to extract er's action_probs
+            lprobs_e = np.log(action_e_probs) # placeholder -> modify this to extract er's action_probs
             lprobs = np.expand_dims(np.concatenate([lprobs_a, lprobs_e], axis=0), axis=1).astype(np.float32)
             
             feed_dict = {alg.states_: states, alg.actions: actions, alg.states: nstates,
@@ -144,7 +149,7 @@ class Driver(object):
             if not noise_flag:
                 do_keep_prob = 1.
             
-            a = self.sess.run(fetches=[alg.action_test], feed_dict={alg.states: np.reshape(observation, [1, -1]),
+            a, a_probs = self.sess.run(fetches=[alg.action_test, alg.action_probs], feed_dict={alg.states: np.reshape(observation, [1, -1]),
                                                                     alg.do_keep_prob: do_keep_prob,
                                                                     alg.noise: noise_flag,
                                                                     alg.temp: self.env.temp})
@@ -160,7 +165,7 @@ class Driver(object):
                 else:
                     action = np.zeros((1, self.env.action_size))
                     action[0, a[0]] = 1
-                alg.er_agent.add(actions=action, rewards=[reward], next_states=[observation], terminals=[done])
+                alg.er_agent.add(actions=action, action_probs=a_probs, rewards=[reward], next_states=[observation], terminals=[done])
 
         return R
 

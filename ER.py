@@ -7,6 +7,7 @@ class ER(object):
     def __init__(self, memory_size, state_dim, action_dim, batch_size, history_length=1):
         self.memory_size = memory_size
         self.actions = np.random.normal(scale=0.35, size=(self.memory_size, action_dim))
+        self.action_probs = np.random.normal(scale=0.35, size=(self.memory_size, action_dim))
         self.rewards = np.random.normal(scale=0.35, size=(self.memory_size, ))
         self.states = np.random.normal(scale=0.35, size=(self.memory_size, state_dim))
         self.terminals = np.zeros(self.memory_size, dtype=np.float32)
@@ -24,10 +25,11 @@ class ER(object):
         self.traj_states = np.empty((self.batch_size, self.traj_length, state_dim), dtype=np.float32)
         self.traj_actions = np.empty((self.batch_size, self.traj_length-1, action_dim), dtype=np.float32)
 
-    def add(self, actions, rewards, next_states, terminals):
+    def add(self, actions, action_probs, rewards, next_states, terminals):
         # state is post-state, after action and reward
         for idx in range(len(actions)):
             self.actions[self.current, ...] = actions[idx]
+            self.action_probs[self.current, ...] = action_probs[idx]
             self.rewards[self.current] = rewards[idx]
             self.states[self.current, ...] = next_states[idx]
             self.terminals[self.current] = terminals[idx]
@@ -73,7 +75,8 @@ class ER(object):
             indexes.append(index)
 
         actions = self.actions[indexes, ...]
+        action_probs = self.action_probs[indexes, ...]
         rewards = self.rewards[indexes, ...]
         terminals = self.terminals[indexes]
 
-        return np.squeeze(self.prestates, axis=1), actions, rewards, np.squeeze(self.poststates, axis=1), terminals
+        return np.squeeze(self.prestates, axis=1), actions, rewards, np.squeeze(self.poststates, axis=1), terminals, action_probs

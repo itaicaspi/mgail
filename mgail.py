@@ -133,9 +133,11 @@ class MGAIL(object):
             a = common.denormalize(mu, self.er_expert.actions_mean, self.er_expert.actions_std)
             eta = tf.random.normal(shape=tf.shape(a), stddev=self.env.sigma)
             self.action_test = tf.squeeze(a + self.noise * eta)
+            self.action_probs = mu
         else:
             a = common.gumbel_softmax(logits=mu, temperature=self.temp)
             self.action_test = tf.compat.v1.argmax(a, dimension=1)
+            self.action_probs = mu
 
         # 4.3 AL
         def policy_loop(state_, t, total_cost, total_trans_err, _):
